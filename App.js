@@ -1320,7 +1320,7 @@ class HomeScreen extends React.Component{
           onChangeText={val => this.setState({newcomment: val})} 
           value={this.state.newcomment} /></View>
        </View>
-       <View style={{flexDirection: 'row', bottom:"10%", left: 20}}>
+       <View style={{flexDirection: 'row', bottom:"15%", left: 20}}>
        <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark})} style={{alignSelf: 'flex-start'}}>
         <Svg width="92" height="47" viewBox="0 0 92 47" fill="none" xmlns="http://www.w3.org/2000/svg">
           <G filter="url(#filter0_d)">
