@@ -1,0 +1,57 @@
+{
+  "project_info": {
+    "project_number": "770404131223",
+    "firebase_url": "https://meme-d7980.firebaseio.com",
+    "project_id": "meme-d7980",
+    "storage_bucket": "meme-d7980.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:770404131223:android:80e53b1280b186a44264d2",
+        "android_client_info": {
+          "package_name": "com.meme.lishup"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "770404131223-6n0u856ojuf4bstnfa0hslmpv99erft0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meme.lishup",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "770404131223-h19hchqke94kf8ffr9sut10gaa5te14a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meme.lishup",
+            "certificate_hash": "4db90ab4e46ebec0cd2bfcef92691777c84303a9"
+          }
+        },
+        {
+          "client_id": "770404131223-rpqbq39sofbclcb8nc1vpf3vjj802a58.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhDuKMckaNxbYoVe_okiEypncaZtYjwcM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "770404131223-rpqbq39sofbclcb8nc1vpf3vjj802a58.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      },
+      "admob_app_id": "ca-app-pub-9901598429119456~9168616309"
+    }
+  ],
+  "configuration_version": "1"
+}
