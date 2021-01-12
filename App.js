@@ -13,8 +13,8 @@ import {
   FlatList,
   Alert,
   Clipboard,
-  Easing,
-  Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText, ImageBackground, Image as NativeImage
+  Easing, Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText, 
+  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker
 } from 'react-native'
 import 'react-native-gesture-handler'
 import { createAppContainer, StackActions, StackNavigator, NavigationActions } from 'react-navigation'
@@ -25,7 +25,7 @@ import * as eva from '@eva-design/eva'
 import { ApplicationProvider, Layout, Text, Button, ButtonGroup,
    Input, Avatar, List, ListItem, Toggle } from '@ui-kitten/components'
 import {Card, Divider, Overlay, ListItem as ElementList} from 'react-native-elements'  
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
+import Icon from 'react-native-vector-icons/Ionicons'
 import Carousel, {ParallaxImage} from 'react-native-snap-carousel'
 import Svg, {
  Path, Circle, Rect, G, Defs, Filter
@@ -45,11 +45,18 @@ import {
   GiphyUi
 } from 'react-native-giphy-ui'
 import RNFS from 'react-native-fs'
-import PhotoEditor from 'react-native-photo-editor'
 import ImagePicker from 'react-native-image-picker'
 import RNFetchBlob from 'rn-fetch-blob'
 import { ScreenContainer } from 'react-native-screens'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { DynamicCollage, StaticCollage } from 'react-native-images-collage'
+import { CropView } from 'react-native-image-crop-tools'
+import ViewShot from 'react-native-view-shot'
+import Gestures from 'react-native-easy-gestures'
+import { DragTextEditor } from 'react-native-drag-text-editor'
+import { SketchCanvas } from '@terrylinla/react-native-sketch-canvas'
+import EnIcon from 'react-native-vector-icons/Entypo'
+import CameraRoll from "@react-native-community/cameraroll"
 
 import { GiftedChat, Bubble, Send, MessageStatusIndicator, Composer, MessageImage, Time } from 'react-native-gifted-chat'
 
@@ -71,6 +78,7 @@ import RNIap, {
 import InAppReview from 'react-native-in-app-review'
 import RNRestart from 'react-native-restart'
 import messaging from '@react-native-firebase/messaging'
+import ReceiveSharingIntent from 'react-native-receive-sharing-intent'
 
 
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
@@ -115,7 +123,7 @@ const slides = [
     key: 'somethun3',
     title: 'Create Meme!',
     text: 'Tap this Icon at bottom left to explore meme creating tools!',
-    icon: 'plus-circle',
+    icon: 'add-circle',
     colors: ['#DA4453', '#89216B'],
   },
   {
@@ -136,14 +144,14 @@ const slides = [
     key: 'somethun6',
     title: 'Swipe Up to See Next Memes!',
     text: 'We have introduced vertical swipe able feed!!',
-    icon: 'gesture-swipe-up',
+    icon: 'swap-vertical-outline',
     colors: ['#36D1DC', '#5B86E5'],
   },
   {
     key: 'somethun7',
     title: "Let's Start!",
     text: 'Show your Meme Creativity!',
-    icon: 'ray-start-arrow',
+    icon: 'md-arrow-forward-circle',
     colors: ['#fc4a1a', '#f7b733'],
   },
 ]
@@ -738,7 +746,7 @@ class Authentication extends React.Component{
                   && this.state.passcode.length > 7 ? evaProps => 
                    <Svg height="20" viewBox="0 0 512 512" width="20" xmlns="http://www.w3.org/2000/svg">
                     <Path d="m512 268c0 17.9-4.3 34.5-12.9 49.7s-20.1 27.1-34.6 35.4c.4 2.7.6 6.9.6 12.6 0 27.1-9.1 50.1-27.1 69.1-18.1 19.1-39.9 28.6-65.4 28.6-11.4 0-22.3-2.1-32.6-6.3-8 16.4-19.5 29.6-34.6 39.7-15 10.2-31.5 15.2-49.4 15.2-18.3 0-34.9-4.9-49.7-14.9-14.9-9.9-26.3-23.2-34.3-40-10.3 4.2-21.1 6.3-32.6 6.3-25.5 0-47.4-9.5-65.7-28.6-18.3-19-27.4-42.1-27.4-69.1 0-3 .4-7.2 1.1-12.6-14.5-8.4-26-20.2-34.6-35.4-8.5-15.2-12.8-31.8-12.8-49.7 0-19 4.8-36.5 14.3-52.3s22.3-27.5 38.3-35.1c-4.2-11.4-6.3-22.9-6.3-34.3 0-27 9.1-50.1 27.4-69.1s40.2-28.6 65.7-28.6c11.4 0 22.3 2.1 32.6 6.3 8-16.4 19.5-29.6 34.6-39.7 15-10.1 31.5-15.2 49.4-15.2s34.4 5.1 49.4 15.1c15 10.1 26.6 23.3 34.6 39.7 10.3-4.2 21.1-6.3 32.6-6.3 25.5 0 47.3 9.5 65.4 28.6s27.1 42.1 27.1 69.1c0 12.6-1.9 24-5.7 34.3 16 7.6 28.8 19.3 38.3 35.1 9.5 15.9 14.3 33.4 14.3 52.4zm-266.9 77.1 105.7-158.3c2.7-4.2 3.5-8.8 2.6-13.7-1-4.9-3.5-8.8-7.7-11.4-4.2-2.7-8.8-3.6-13.7-2.9-5 .8-9 3.2-12 7.4l-93.1 140-42.9-42.8c-3.8-3.8-8.2-5.6-13.1-5.4-5 .2-9.3 2-13.1 5.4-3.4 3.4-5.1 7.7-5.1 12.9 0 5.1 1.7 9.4 5.1 12.9l58.9 58.9 2.9 2.3c3.4 2.3 6.9 3.4 10.3 3.4 6.7-.1 11.8-2.9 15.2-8.7z" fill="#1da1f2"/>
-                  </Svg>  : evaProps => <Icon name="information" color="red" size={25} onPress={() => 
+                  </Svg>  : evaProps => <Icon name="information-circle" color="red" size={25} onPress={() => 
                   ToastAndroid.show('Your Passwords must match and contain at least 8 characters', ToastAndroid.LONG)} /> }
                 /> 
                   <Button disabled={!this.state.passcode && !this.state.passcodetwo} onPress={() => {
@@ -810,7 +818,7 @@ class Authentication extends React.Component{
                   accessoryRight={this.state.username != "" && this.state.isAvailableUser ? evaProps => 
                    <Svg height="20" viewBox="0 0 512 512" width="20" xmlns="http://www.w3.org/2000/svg">
                     <Path d="m512 268c0 17.9-4.3 34.5-12.9 49.7s-20.1 27.1-34.6 35.4c.4 2.7.6 6.9.6 12.6 0 27.1-9.1 50.1-27.1 69.1-18.1 19.1-39.9 28.6-65.4 28.6-11.4 0-22.3-2.1-32.6-6.3-8 16.4-19.5 29.6-34.6 39.7-15 10.2-31.5 15.2-49.4 15.2-18.3 0-34.9-4.9-49.7-14.9-14.9-9.9-26.3-23.2-34.3-40-10.3 4.2-21.1 6.3-32.6 6.3-25.5 0-47.4-9.5-65.7-28.6-18.3-19-27.4-42.1-27.4-69.1 0-3 .4-7.2 1.1-12.6-14.5-8.4-26-20.2-34.6-35.4-8.5-15.2-12.8-31.8-12.8-49.7 0-19 4.8-36.5 14.3-52.3s22.3-27.5 38.3-35.1c-4.2-11.4-6.3-22.9-6.3-34.3 0-27 9.1-50.1 27.4-69.1s40.2-28.6 65.7-28.6c11.4 0 22.3 2.1 32.6 6.3 8-16.4 19.5-29.6 34.6-39.7 15-10.1 31.5-15.2 49.4-15.2s34.4 5.1 49.4 15.1c15 10.1 26.6 23.3 34.6 39.7 10.3-4.2 21.1-6.3 32.6-6.3 25.5 0 47.3 9.5 65.4 28.6s27.1 42.1 27.1 69.1c0 12.6-1.9 24-5.7 34.3 16 7.6 28.8 19.3 38.3 35.1 9.5 15.9 14.3 33.4 14.3 52.4zm-266.9 77.1 105.7-158.3c2.7-4.2 3.5-8.8 2.6-13.7-1-4.9-3.5-8.8-7.7-11.4-4.2-2.7-8.8-3.6-13.7-2.9-5 .8-9 3.2-12 7.4l-93.1 140-42.9-42.8c-3.8-3.8-8.2-5.6-13.1-5.4-5 .2-9.3 2-13.1 5.4-3.4 3.4-5.1 7.7-5.1 12.9 0 5.1 1.7 9.4 5.1 12.9l58.9 58.9 2.9 2.3c3.4 2.3 6.9 3.4 10.3 3.4 6.7-.1 11.8-2.9 15.2-8.7z" fill="#1da1f2"/>
-                  </Svg>  : evaProps => <Icon name="information" color="red" size={25} onPress={() => 
+                  </Svg>  : evaProps => <Icon name="information-circle" color="red" size={25} onPress={() => 
                   ToastAndroid.show('Please Choose a Unique Username', ToastAndroid.LONG)} /> }
                   maxLength={20}
                 /> 
@@ -832,8 +840,8 @@ class Authentication extends React.Component{
         <ApplicationProvider
           {...eva}
           theme={this.state.dark ? eva.dark : eva.light }> 
-            <Layout style={{flex: 1, paddingTop: 50, alignItems: 'center', backgroundColor: '#FFD362'}}>
-            <View style={{alignSelf: 'center', width: "90%", marginTop: "10%"}}> 
+            <Layout style={{flex: 1, paddingTop: 30, alignItems: 'center', backgroundColor: '#FFD362'}}>
+            <View style={{alignSelf: 'center', width: "90%"}}> 
                   <Text category="h4" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Sign In:</Text>
                   <Text category="h5" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Enter Email/ Phone #</Text>
             <Input
@@ -870,7 +878,7 @@ class Authentication extends React.Component{
             <TouchableOpacity style={{backgroundColor: '#00BBFF', marginTop: 40, width: 100, height: 100,
              borderRadius: 50, justifyContent: 'center', alignItems: 'center'}}  onPress={() => this.state.username ? this.login(this.state.username) :
               ToastAndroid.show('Could not find any logged in User', ToastAndroid.SHORT)}>
-              <Icon name="arrow-right" size={50} color="white" />
+              <Icon name="arrow-forward-circle" size={50} color="white" />
             </TouchableOpacity>  
         </Layout>
       </ApplicationProvider>
@@ -1055,15 +1063,40 @@ class HomeScreen extends React.Component{
     return true
   })
   this.fetchFirstTime()
-  var initialUrl = await Linking.getInitialURL()  
-  if(initialUrl.substr(0, 27) == "lishup://meme/profile?user="){
-    this.props.navigation.navigate('Profile', {
-      user: initialUrl.substr(27, initialUrl.length),
-      dark: this.state.dark
+
+  Linking.getInitialURL().then((url) => {
+    Linking.addEventListener('url', url => {
+      console.log(url)
     })
-  }
+    if (url) {
+      console.log('shared string/text is ', url)
+      if(url.substr(0, 27) == "lishup://meme/profile?user="){
+      this.props.navigation.navigate('Profile', {
+        user: url.substr(27, url.length),
+        dark: this.state.dark
+      })
+    }
+    }
+  }).catch(err => console.error('An error occurred', err))
+  ReceiveSharingIntent.getReceivedFiles(files => {
+    console.log(files)
+    if(files[0].contentUri){
+      this.props.navigation.navigate('Create', {
+        user: this.state.user,
+        dark: this.state.dark,
+        mixContent: files[0].contentUri
+      })
+    }
+  }, 
+  (error) =>{
+    console.log(error);
+  })
+  ReceiveSharingIntent.clearReceivedFiles()
 }
   componentWillUnmount(){
+    Linking.removeEventListener('url', url => {
+      console.log(url)
+    })
     BackHandler.removeEventListener('hardwareBackPress', () => {
       BackHandler.exitApp()
       return true
@@ -1245,7 +1278,7 @@ class HomeScreen extends React.Component{
     })
   }
   renderPosts = ({item, index}) => (
-    <Layout style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0}} level="2" >
+    <Layout style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0}} level="2" key={index}>
        <View style={{position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 5, zIndex: 5 }}>
         
         </View>
@@ -1278,7 +1311,7 @@ class HomeScreen extends React.Component{
           ? this.state.imageUrls[index].map((uri) => (
             <Image
               source={{uri: uri}}
-              style={{width: '95%', height: (Dimensions.get('window').width * 100) / 100, alignSelf: 'center',
+              style={{width: '95%', height: (Dimensions.get('window').width * 90) / 100, alignSelf: 'center',
                marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
                containerStyle={{borderRadius: 10,
                 elevation: 3}}
@@ -1305,7 +1338,7 @@ class HomeScreen extends React.Component{
            }}><Icon {...props}
             size={25}
             color={this.state.dark ?'white' : '#ababab'}
-            name='send'
+            name='ios-arrow-redo-circle-sharp'
           /></TouchableOpacity> : <TouchableOpacity style={{height: 30, marginHorizontal: 10, flexDirection: 'row'}}
           onPress={() =>  {
             this.setState({showComments: !this.state.showComments, currentPostId: item.id, currentPostAuthor: item.user})
@@ -1321,7 +1354,7 @@ class HomeScreen extends React.Component{
           value={this.state.newcomment} /></View>
        </View>
        <View style={{flexDirection: 'row', bottom:"15%", left: 20}}>
-       <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark})} style={{alignSelf: 'flex-start'}}>
+       <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} style={{alignSelf: 'flex-start'}}>
         <Svg width="92" height="47" viewBox="0 0 92 47" fill="none" xmlns="http://www.w3.org/2000/svg">
           <G filter="url(#filter0_d)">
           <Path d="M24 0C12.9714 0 4 8.97143 4 20C4 31.0286 12.9714 40 24 40C35.0286 40 44 31.0286 44 20C44 8.97143 35.0286 0 24 0Z" fill="white"/>
@@ -1356,8 +1389,8 @@ class HomeScreen extends React.Component{
         onPress={() => {
           this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
-            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark})
-          )) : null
+            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark, user: this.state.user})
+          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
         }}>
            <Svg width="43" height="40" viewBox="0 0 33 30" fill="none" xmlns="http://www.w3.org/2000/svg">
             <G filter="url(#filter0_d)">
@@ -1388,8 +1421,8 @@ class HomeScreen extends React.Component{
         </View>
         </Layout>
   )
-    renderComments = ({item}) => (
-      <View style={{flexDirection :'row', marginVertical: 10}}>
+    renderComments = ({item, idx}) => (
+      <View style={{flexDirection :'row', marginVertical: 10}} key={idx}>
         <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
         ><Avatar size='small' style={{marginRight: 5}}
              source={{uri: item.userpic}} /></TouchableOpacity>
@@ -1463,7 +1496,7 @@ class HomeScreen extends React.Component{
       if(this.state.feedOrder == 'date_time'){
         return 'new-box'
       }else if(this.state.feedOrder == 'loved'){
-        return 'arrow-top-right'
+        return 'ios-arrow-up-circle'
       }else if(this.state.feedOrder == 'myFeed'){
         return 'sticker-emoji'
       }
@@ -1503,7 +1536,9 @@ class HomeScreen extends React.Component{
              <Path d="M21.1661 24.3088C18.2457 25.1412 15.9544 27.4325 15.122 30.3529C14.2896 27.4325 11.9982 25.1412 9.07783 24.3088C11.9987 23.4761 14.2897 21.1827 15.122 18.2371C15.9542 21.1827 18.2452 23.4761 21.1661 24.3088Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
              <Path d="M16.9719 9.84639C14.0128 10.6322 11.5999 13.0125 10.8124 16.0055C9.99698 13.0173 7.61759 10.6335 4.655 9.84639C7.67798 9.03114 9.99916 6.67587 10.8124 3.6573C11.5977 6.68066 13.9524 9.03239 16.9719 9.84639Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
              </Svg>
-             : <Icon name={this.currentFeed()} size={35} color={this.state.dark ? "white" : "black"} />}
+             : this.state.feedOrder == 'date_time' ? 
+             <EnIcon name='new' size={35} color={this.state.dark ? "white" : "black"} /> :
+             <Icon name='ios-arrow-up-circle' size={35} color={this.state.dark ? "white" : "black"} />}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}
              >
@@ -1552,7 +1587,9 @@ class HomeScreen extends React.Component{
              <Path d="M21.1661 24.3088C18.2457 25.1412 15.9544 27.4325 15.122 30.3529C14.2896 27.4325 11.9982 25.1412 9.07783 24.3088C11.9987 23.4761 14.2897 21.1827 15.122 18.2371C15.9542 21.1827 18.2452 23.4761 21.1661 24.3088Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
              <Path d="M16.9719 9.84639C14.0128 10.6322 11.5999 13.0125 10.8124 16.0055C9.99698 13.0173 7.61759 10.6335 4.655 9.84639C7.67798 9.03114 9.99916 6.67587 10.8124 3.6573C11.5977 6.68066 13.9524 9.03239 16.9719 9.84639Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
              </Svg>
-             : <Icon name={this.currentFeed()} size={35} color={this.state.dark ? "white" : "black"} style={{opacity: 0.6}} />}
+             : this.state.feedOrder == 'date_time' ? 
+             <EnIcon name='new' size={35} color={this.state.dark ? "white" : "black"} /> :
+             <Icon name='ios-arrow-up-circle' size={35} color={this.state.dark ? "white" : "black"} />}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
               <Svg width="38" height="39" viewBox="0 0 38 39" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1621,16 +1658,24 @@ class HomeScreen extends React.Component{
             <Divider />
             <ButtonGroup status="basic">
               <Button onPress={() => this.setState({awardAmount: 5})} style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}}><Text style={{fontWeight: 'bold', fontSize: 20}}>5</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
               <Button style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}} onPress={() => this.setState({awardAmount: 10})}><Text style={{fontWeight: 'bold', fontSize: 20}}>10</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
               <Button style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}} onPress={() => this.setState({awardAmount: 20})}><Text style={{fontWeight: 'bold', fontSize: 20}}>20</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
             </ButtonGroup>
             <Input keyboardType="numeric" style={{borderColor: 'transparent', borderBottomColor: this.state.dark ? 'white' : 'black', padding: 10, backgroundColor: 'transparent', textAlign: 'center', margin: 10,
               opacity: this.state.awardAmount ? 1 : 0.5}} 
             placeholder="10 Gems" onChangeText={val => this.setState({awardAmount: val})} value={this.state.awardAmount.toString()}
-            textStyle={{fontSize: 25, textAlign: 'center'}} accessoryRight={props => <Icon name="diamond" color="#F10063" size={20}/>}/>
+            textStyle={{fontSize: 25, textAlign: 'center'}} accessoryRight={props => <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+            </Svg>}/>
             <Button onPress={() => this.award()} style={{backgroundColor: '#F10063', borderRadius: 20, borderColor: 'white'}}>Award Gems</Button>     
           </Layout>
         </View>
@@ -1684,7 +1729,7 @@ class HomeScreen extends React.Component{
                 }
               )
             }} >
-            <Icon name="sticker-emoji" size={35} color='#babbd4'/>
+            <EnIcon name="emoji-happy" size={35} color='#babbd4'/>
             </TouchableOpacity>
 
       <Button onPress={() => {
@@ -1986,10 +2031,10 @@ class ViewPost extends React.Component{
           accessoryLeft={evaProps => 
             <Avatar size='giant' source={{uri: item.userpic}}/>}
           accessoryRight={evaProps => <TouchableOpacity>
-            <Icon
+            <EnIcon
             color={this.state.dark ? 'white' : 'black'}
             size={30}
-            name='dots-horizontal'
+            name='dots-three-horizontal'
             onPress={() => this.setState({moreOptions: true})}
           /></TouchableOpacity>}
           onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
@@ -2000,11 +2045,14 @@ class ViewPost extends React.Component{
 
         {this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
-            <ScaledImage
-            uri= {uri}
-            width={Dimensions.get('window').width}
-            onPress={()=> this.setState({zoomImage: true, zoomUri: uri})}
-            />
+            <Image
+              source={{uri: uri}}
+              style={{width: '95%', height: (Dimensions.get('window').width * 90) / 100, alignSelf: 'center',
+               marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
+               containerStyle={{borderRadius: 10}} resizeMode="contain"
+              onPress={() => this.setState({zoomImage: true, zoomUri: uri})}
+              PlaceholderContent={<FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />}
+             />
             ))
           : <ScaledImage uri='https://dribbble.com/shots/3600670-Loading-gif' width={100} />}
 
@@ -2014,7 +2062,7 @@ class ViewPost extends React.Component{
         <Icon
           size={32}
           color={item.isliked ? 'white' : this.state.dark ? 'white' : 'black'}
-          name='heart'
+          name='ios-heart'
         /> <Text style={{color: item.isliked ? 'white' : this.state.dark ? 'white' : 'black', fontWeight: 'bold'}}>{item.loves}</Text>
         </Button>
         <Button style={{backgroundColor: 'transparent', borderColor: 'transparent'}}
@@ -2030,7 +2078,7 @@ class ViewPost extends React.Component{
         <Icon
           size={32}
           color={this.state.dark ? 'white' : 'black'}
-          name='share-circle'
+          name='arrow-redo-circle'
         />
         </Button>
         <Button style={{backgroundColor: 'transparent', borderColor: 'transparent'}}
@@ -2038,7 +2086,7 @@ class ViewPost extends React.Component{
         <Icon
           size={32}
           color={this.state.dark ? 'white' : 'black'}
-          name='trophy-award'
+          name='trophy'
         />
         </Button>
         </Layout>
@@ -2175,7 +2223,7 @@ class ViewPost extends React.Component{
                 }
               );
             }} >
-            <Icon name="sticker-emoji" size={35} color='#babbd4'/>
+            <EnIcon name="emoji-happy" size={35} color='#babbd4'/>
             </TouchableOpacity>
 
       <Button onPress={() => {
@@ -2220,16 +2268,24 @@ class ViewPost extends React.Component{
             <Divider />
             <ButtonGroup status="basic">
               <Button onPress={() => this.setState({awardAmount: 5})} style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}}><Text style={{fontWeight: 'bold', fontSize: 20}}>5</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
               <Button style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}} onPress={() => this.setState({awardAmount: 10})}><Text style={{fontWeight: 'bold', fontSize: 20}}>10</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
               <Button style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}} onPress={() => this.setState({awardAmount: 20})}><Text style={{fontWeight: 'bold', fontSize: 20}}>20</Text> 
-              <Icon name="diamond" color="#F10063" size={20}/></Button>
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
             </ButtonGroup>
             <Input keyboardType="numeric" style={{borderColor: 'transparent', borderBottomColor: this.state.dark ? 'white' : 'black', padding: 10, backgroundColor: 'transparent', textAlign: 'center', margin: 10,
               opacity: this.state.awardAmount ? 1 : 0.5}} 
             placeholder="10 Gems" onChangeText={val => this.setState({awardAmount: val})} value={this.state.awardAmount.toString()}
-            textStyle={{fontSize: 25, textAlign: 'center'}} accessoryRight={props => <Icon name="diamond" color="#F10063" size={20}/>}/>
+            textStyle={{fontSize: 25, textAlign: 'center'}} accessoryRight={props =><Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+            </Svg>}/>
             <Button onPress={() => this.award()} style={{backgroundColor: '#F10063', borderRadius: 20, borderColor: 'white'}}>Award Gems</Button>     
           </Layout>
         </View>
@@ -2246,9 +2302,9 @@ class ViewPost extends React.Component{
         <Overlay isVisible={this.state.moreOptions} onBackdropPress={() => this.setState({moreOptions: !this.state.moreOptions})}
          overlayStyle={{width: "80%", minHeight: "30%", borderRadius: 50, backgroundColor: this.state.dark ? '#101426' : '#fff', paddingHorizontal: 30 }}  animationType="fade">
           <Layout level="4" style={{flex: 1, justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row', backgroundColor: this.state.dark ? '#101426' : '#fff'}}>
-          {this.state.user == this.state.data[0].user ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-decagram" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>}
+          {this.state.user == this.state.data[0].user ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>}
            <TouchableOpacity
-             onPress={() => this.addtoBookMarks()}><Icon name="bookmark-check-outline" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
+             onPress={() => this.addtoBookMarks()}><Icon name="bookmark" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
            <TouchableOpacity 
               onPress={() => {
                 this.state.imageUrls[0] && this.state.imageUrls[0].length
@@ -2256,10 +2312,10 @@ class ViewPost extends React.Component{
                       Clipboard.setString(uri)
                     )) : null
                 ToastAndroid.show('Copied Meme Link', ToastAndroid.SHORT)
-              }}><Icon name="content-copy" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
+              }}><Icon name="copy" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
           {this.state.user == this.state.data[0].user ? <TouchableOpacity 
               onPress={() => {  this.deleteMeme()
-              }}><Icon name="delete" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>    : null}
+              }}><Icon name="ios-trash-bin" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>    : null}
           </Layout>
           </Overlay>
 
@@ -2368,9 +2424,11 @@ class Notifications extends React.Component{
       }else if(txt.substring(txt.length - 16, txt.length) == "Loved your Post!"){
         return <Icon {...props} name="heart" color="red" size={20} />
       }else if(txt.substring(txt.length - 5, txt.length) == "Gems!"){
-        return <Icon {...props} name="diamond" color="red" size={20} />
+        return <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+        </Svg>
       }else{
-        return <Icon {...props} name="eye-outline" color={this.state.dark ? '#fff' : '#4DA6FF'} size={20} />
+        return <Icon {...props} name="eye" color={this.state.dark ? '#fff' : '#4DA6FF'} size={20} />
       }
   }
   navigate(txt, extra){
@@ -2434,331 +2492,893 @@ class Notifications extends React.Component{
  }
 }
 
+var twoMatrix = [[1, 1], [2]]
+var threeMatrix = [[3], [2, 1], [1,2]]
+var fourMatrix = [[2, 2], [3, 1], [2, 1, 1], [4]]
+var colors = [
+  {value: 'black'}, {value: 'brown'}, {value: '#FF0000'}, {value: '#FE7E00'}, {value: 'yellow'},
+  {value: '#01FF01'}, {value: '#00EFFE'}, {value: '#0000FE'}, {value: '#FF00FE'}, {value: 'white'}, {value: 'grey'}
+]
+var brushSizes = [40, 30, 25, 20, 15, 12, 10, 8]
+
 class Create extends React.Component{
   static navigationOptions = ({navigation}) => {
     const { params = {} } = navigation.state
     return {
-      title: 'Create ᗰEᗰE',
-      headerTitleStyle: { textAlign: 'center', color: params.darktheme ? 'white' : 'black', fontSize: 22},
-      headerStyle: { elevation:0, backgroundColor: params.darktheme ? '#151a30' : '#edf1f7' },
-      headerTintColor : params.darktheme ? '#edf1f7' : '#151a30' 
+      header: null
     };
   };
-
   constructor(props){
     super(props)
+    this.handleBack = this.handleBack.bind(this)
     this.state = {
-      dark: false,
-      finalPhoto: '',
-      postText: '',
-      unsplash: [],
       user: '',
-      loadUnsplash: false,
-      loadingUnsplash: true
+      photos: [],
+      images: [],
+      contests: [],
+      showPhotosFrom: 'device',
+      selectTemplate: true,
+      selectImage: true,
+      numImages: 0,
+      matrix: [],
+      showTextTools: false,
+      showStickerTools: false,
+      showImageTools: false,
+      finalize: false,
+      texts: [],
+      editingTextID: 0,
+      strokeWidth: 15,
+      strokeColor: 'black',
+      stickers: [],
+      currentStickerIdx: 0,
+      addOverlay: false,
+      showDrawTools: false,
+      textArea: false,
+      textAtTop: true,
+      isResizing: false,
+      refreshingPhotos: false,
+      enableLabel: false,
+      enableDelete: false,
+      showConfirmation: false,
+      thumbIcon: '',
+      currentTextColor: 'black',
+      currentBGColor: 'transparent',
+      contestCost: 0,
+      Posted: false,
+      caption: '',
+      remixUri: ''
     }
   }
-  componentDidMount(){
-    const { params } = this.props.navigation.state
-    const mixContent = params ? params.mixContent : null
-    const text = params ? params.text : null
-    const dark = params ? params.dark : null
 
-    this.setState({dark: dark})
-    this.props.navigation.setParams({darktheme: dark})
-
-    console.log(RNFS.DocumentDirectoryPath)
-
-    if(mixContent){
-      this.onlineImage(mixContent)
-    }else if(text){
-      this.setState({postText: text})
-    }
+  componentDidMount() {
+    BackHandler.addEventListener('hardwareBackPress', this.handleBack)
+    this.getPhotos()
+    Icon.getImageSource('circle', 35, 'white')
+   .then(source => this.setState({ thumbIcon: source }))
     this.fetchUser()
-    BackHandler.addEventListener('hardwareBackPress', () => {
-      if(this.state.finalPhoto){
-        Alert.alert('Discard Meme?', 'This Post will be discarded', [
-          {
-            text: 'Yes',
-            onPress: () => this.props.navigation.goBack()
-          }
-        ],
-        {cancelable: true})
-      }else{
+  }
+  
+  componentWillUnmount() {
+    BackHandler.removeEventListener('hardwareBackPress', this.handleBack);
+  }
+  handleBack(){
+    if(!this.state.selectTemplate){
+          this.setState({selectTemplate: true, texts: [], stickers: []})
+    }else{
       this.props.navigation.goBack()
-      }
-      return true
-    })
+    }
+    return true
   }
-  componentWillUnmount(){
-    BackHandler.removeEventListener('hardwareBackPress', () => {
-      if(this.state.finalPhoto){
-        Alert.alert('Discard Meme?', 'This Post will be discarded', [
-          {
-            text: 'Yes',
-            onPress: () => this.props.navigation.goBack()
-          }
-        ],
-        {cancelable: true})
-      }else{
-       this.props.navigation.goBack()
-      }
-      return true
-    })
-  }
-  fetchUser = async(id) => {
-    try {
-      var user = await AsyncStorage.getItem('user')
-      if(user !== null) {
-        this.setState({user: user})
-      }
-    } catch(e) {
-      ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
+  fetchUser = async() => {
+    const { params } = this.props.navigation.state
+    const user = params ? params.user : null
+    const mix = params ? params.mixContent : null
+    const dark = params ? params.dark : null
+    
+
+    this.setState({user: user, remixUri: mix, dark : dark})
+    if(mix){
+      this.setState({selectTemplate: false, images: [...this.state.images, this.state.remixUri], numImages: 1})
+      console.log(mix)
+      console.log(this.state.images)
     }
   }
-  Empty(){
-    return (
-          <Layout style={{justifyContent: 'center', flex: 1, backgroundColor: 'transparent'}}>
-          <ScaledImage uri='https://static.wixstatic.com/media/bf112e_439a048dd6e645c28c76882795d06735~mv2.gif'
-          width={100}/>
-        <Text style={{fontSize:18,
-         fontWeight:'bold', color:'grey', textAlign: 'center'}}>
-        Nothing Found!
-        </Text>
-        </Layout>
-    )
+   hasAndroidPermission = async() => {
+    const permission = PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE;
+  
+    const hasPermission = await PermissionsAndroid.check(permission);
+    if (hasPermission) {
+      return true;
+    }
+  
+    const status = await PermissionsAndroid.request(permission);
+    return status === 'granted';
   }
-  Loading(){
-    return (
-      <Layout style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent'}}>
-      <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
-      priority: FastImage.priority.high,}} style={{
-        width: 200, height: 200, alignSelf:'center'
-      }}/>
-      </Layout>
-    )
+  getPhotos = async() => {
+    if (Platform.OS === "android" && !(await this.hasAndroidPermission())) {
+      return;
+    }
+    CameraRoll.getPhotos({
+      first: 100,
+      assetType: 'Photos',
+    })
+    .then(r => {
+      this.setState({ photos: r.edges, showPhotosFrom: 'device', images: [r.edges[0].node.image.uri], numImages: 1, refreshingPhotos: false })
+    })
+    .catch((err) => {
+       //Error Loading Images
+       console.log('err:', err)
+    })
   }
-  editImage(){
-    const options = {
-      title: 'Choose Photo for ᗰEᗰE',
-      storageOptions: {
-        skipBackup: true,
-        path: 'images',
-      },
-    };
-    ImagePicker.showImagePicker(options, (response) => {
-      if (response.didCancel) {
-        console.log('User cancelled image picker');
-      } else if (response.error) {
-        console.log('ImagePicker Error: ', response.error);
-      } else if (response.customButton) {
-        console.log('User tapped custom button: ', response.customButton);
-      } else {
-        var d = new Date()
-        var path = RNFS.DocumentDirectoryPath + d.getTime() + response.fileName
-
-        RNFS.copyFile(response.uri, path)
-           .then(() => {
-            PhotoEditor.Edit({
-              path: RNFS.DocumentDirectoryPath + d.getTime() + response.fileName,
-              stickers: ['aa', 'bb', 'cc', 'ee', 'i', 'j', 'k', 'o', 'p', 'u', 'v', 'w', 'x', 'y', 'z', 'b', 'dd', 'd', 'e', 'za',
-                 'zb','zc', 'zd', 'ze', 'zf', 'zg', 'zh', 'zi', 'zj', 'zk', 'zl', 'zm', 'zn', 'zo', 'zp', 'zq', 'zr', 'zs', 'zt',
-                'zu', 'zv', 'zw'],
-              onDone: data => {
-                this.setState({finalPhoto: 'file://' + data})
-                console.log(data)
-              },
-              oncancel : () => {
-                ToastAndroid.show("Meme was Canceled", ToastAndroid.SHORT)
-              }
-            })
-           })
-           .catch((err) => {
-               console.log(err.message)
-           });
-      }
-    });
-  }
-  onlineImage(url){
-    ToastAndroid.show("Please Wait. Downloading...", ToastAndroid.SHORT)
-    var d = new Date()
-    RNFS.downloadFile({
-      fromUrl: url,
-      toFile: RNFS.DocumentDirectoryPath + d.getTime() + '.jpg'
-  })
-  .promise.then(res =>{
-    console.log(res)
-    PhotoEditor.Edit({
-      path: RNFS.DocumentDirectoryPath + d.getTime() + '.jpg',
-      stickers: ['aa', 'bb', 'cc', 'ee', 'i', 'j', 'k', 'o', 'p', 'u', 'v', 'w', 'x', 'y', 'z', 'b', 'dd', 'd', 'e', 'za',
-                 'zb','zc', 'zd', 'ze', 'zf', 'zg', 'zh', 'zi', 'zj', 'zk', 'zl', 'zm', 'zn', 'zo', 'zp', 'zq', 'zr', 'zs', 'zt',
-                'zu', 'zv', 'zw'],
-      onDone: data => {
-        this.setState({finalPhoto: 'file://' + data, loadUnsplash: false})
-      },
-      oncancel : () => {
-        ToastAndroid.show("Meme was Canceled", ToastAndroid.SHORT)
+  getTemplates(){
+    fetch('https://lishup.com/app/memeTemplates.php', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
       }
     })
-  })
-  }
-  onlineGIF(url){
-    ToastAndroid.show("Please Wait. Downloading GIF...", ToastAndroid.SHORT)
-    var d = new Date()
-    RNFS.downloadFile({
-      fromUrl: url,
-      toFile: RNFS.DocumentDirectoryPath + d.getTime() + '.gif'
-  })
-  .promise.then(res =>{
-    console.log(RNFS.DocumentDirectoryPath + d.getTime() + '.gif')
-    PhotoEditor.Edit({
-      path: RNFS.DocumentDirectoryPath + d.getTime() + '.gif',
-      stickers: ['aa', 'bb', 'cc', 'ee', 'i', 'j', 'k', 'o', 'p', 'u', 'v', 'w', 'x', 'y', 'z', 'b', 'dd', 'd', 'e', 'za',
-                 'zb','zc', 'zd', 'ze', 'zf', 'zg', 'zh', 'zi', 'zj', 'zk', 'zl', 'zm', 'zn', 'zo', 'zp', 'zq', 'zr', 'zs', 'zt',
-                'zu', 'zv', 'zw'],
-      onDone: data => {
-        this.setState({finalPhoto: 'file://' + data, loadUnsplash: false})
-        console.log(data)
-      },
-      oncancel : () => {
-        ToastAndroid.show("Meme was Canceled", ToastAndroid.SHORT)
-      }
+    .then((response) => response.json())
+    .then((responseJson) => {
+      this.setState({photos: responseJson, images: [responseJson[0].url], numImages: 1, refreshingPhotos: false, showPhotosFrom: 'templates'})
     })
-  })
   }
-  submit(){
-    ToastAndroid.show('Baking your ugly Meme...', ToastAndroid.SHORT)
+  renderGallery = ({item, idx}) => (
+    <View>
+      <TouchableOpacity onPress={() => {
+         if(this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri)){
+          var i = 0;
+          while (i < this.state.images.length) {
+            if (this.state.images[i] === (this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri)) {
+              let images = this.state.images
+              images.splice(i, 1)
+              this.setState({images: images,  numImages: this.state.numImages - 1})
+            } else {
+              ++i;
+            }
+          }
+         } else{
+          this.setState({images: [...this.state.images, this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri], numImages: this.state.numImages + 1})
+         }
+      }}
+       style={{backgroundColor: 'black', margin: 5/3, }}>
+    <Image key={idx} style={{
+      width: (Dimensions.get('window').width / 3) - 1.5,
+      height: Dimensions.get('window').width / 3,
+      resizeMode: 'cover',
+      opacity: this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri) ? 0.5 : 1
+    }}
+    source={{ uri: this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri}}  />
+    </TouchableOpacity>
+    </View>
+  )
+  renderPickerGallery = ({item, idx}) => (
+    <View>
+      <TouchableOpacity onPress={() => {
+          this.setState({stickers: [...this.state.stickers, { url : item.node.image.uri, height: 120, width: 120 }] })
+      }}
+       style={{backgroundColor: 'black', margin: 5, }}>
+      <Image key={idx} style={{
+        width: (Dimensions.get('window').width / 2) - 5,
+        height: Dimensions.get('window').width / 2,
+        resizeMode: 'cover'
+      }}
+      source={{ uri: item.node.image.uri}}  />
+    </TouchableOpacity>
+    </View>
+  )
+  fetchContests(){
+      fetch('https://lishup.com/app/fetchContests.php', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        }
+      })
+      .then((response) => response.json())
+      .then((responseJson) => {
+          this.setState({contests: responseJson})
+          console.log(responseJson)
+      })
+      .catch((err) => {
+        console.log(err)
+        ToastAndroid.show('Request Failed', ToastAndroid.SHORT)
+      })
+  }
+  changeTextSize(val){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+         data[i].FontSize = val
+         data[i].LineHeight = val + 5
+         this.setState({texts: data})
+         break
+      }
+    }
+  }
+  changeStickerSize(val){
+    var newMarkers = this.state.stickers
+    newMarkers[this.state.currentStickerIdx].height = val
+    newMarkers[this.state.currentStickerIdx].width = val
+    this.setState({ stickers: newMarkers })
+    console.log(newMarkers)
+  }
+  changeTextColor(val){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+         data[i].FontColor = val
+         this.setState({texts: data, currentTextColor: val})
+         break
+      }
+    }
+  }
+  changeText(val){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+         data[i].text = val
+         this.setState({texts: data})
+         break
+      }
+    }
+  }
+  changeTextFont(val){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+         data[i].FontFamily = val
+         this.setState({texts: data})
+         break
+      }
+    }
+  }
+  getText(){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+        return data[i].text
+      }
+    }
+  }
+  getTextDetails(dataGiven, typeGiven){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+        if(!dataGiven){
+          if(typeGiven == 'text'){
+            return data[i].text
+          }else if(typeGiven == 'FontSize'){
+            return parseInt(data[i].FontSize)
+          }else if(typeGiven == 'color'){
+            return parseInt(data[i].FontColor)
+          }
+        }else{
+          if(dataGiven == data[i].FontFamily){
+            return true
+          }else{
+            return false
+          }
+        }
+        break
+      }
+    }
+  }
+  changeTextBgColor(val){
+    for (var i in this.state.texts) {
+      if (this.state.texts[i].id == this.state.editingTextID) {
+        let data = this.state.texts
+         data[i].BackgroundColor = val
+         this.adjustTextColor(val)
+         this.setState({texts: data, currentBGColor: val})
+         break
+      }
+    }
+  }
+  adjustTextColor(color){
+    var r, g, b, hsp;
+    if (color.match(/^rgb/)) {
+     color = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/)
+        r = color[1];
+        g = color[2];
+        b = color[3];
+    } 
+    else {
+        color = +("0x" + color.slice(1).replace( 
+        color.length < 5 && /./g, '$&$&'));
 
+        r = color >> 16;
+        g = color >> 8 & 255;
+        b = color & 255;
+    }
+    hsp = Math.sqrt(
+    0.299 * (r * r) +
+    0.587 * (g * g) +
+    0.114 * (b * b)
+    );
+    if (hsp>127.5) {
+        this.changeTextColor('black')
+    } 
+    else {
+      this.changeTextColor('white')
+    }
+  }
+  renderColors = ({item}) => (
+    <TouchableOpacity onPress={() => this.changeTextColor(item.value)}>
+    <View style={{backgroundColor: item.value, width: 40, height: 40, borderRadius: 20, 
+      margin: 10, borderColor: item.value == 'white' ? 'black' : 'white', 
+      borderWidth: this.state.currentTextColor == item.value ? 2 : 0}} />
+    </TouchableOpacity>
+  )
+  renderBgColors = ({item}) => (
+    <TouchableOpacity onPress={() => this.changeTextBgColor(item.value)}>
+    <View style={{backgroundColor: item.value, width: 40, height: 40, borderRadius: 20, 
+      margin: 10, borderColor: item.value == 'white' ? 'black' : 'white', borderWidth: this.state.currentBGColor == item.value ? 2 : 0}} />
+    </TouchableOpacity>
+  )
+  renderDrawColors = ({item}) => (
+    <TouchableOpacity onPress={() => this.setState({strokeColor: item.value})}>
+      <View style={{backgroundColor: item.value, width: 40, 
+        height:  40, borderRadius: 20, 
+          margin: 10, borderColor: item.value == 'white' ? 'black' : 'white', borderWidth: this.state.strokeColor == item.value ? 2 : 0}} />
+    </TouchableOpacity>
+  )
+  renderBrushes = ({item}) => (
+    <TouchableOpacity onPress={() => this.setState({strokeWidth: item})}>
+    <View style={{backgroundColor:'black', width: item, height: item, borderRadius: item/2, 
+    borderWidth: this.state.strokeWidth == item ? 1 : 0, borderColor: 'white',
+      margin: 5, alignSelf: 'center'}} />
+    </TouchableOpacity>
+  )
+  addSticker(){
+    GiphyUi.present(
+      {
+        theme: 'dark',
+        layout: 'waterfall',
+        rating: 'ratedPG',
+        showConfirmationScreen: true,
+        mediaTypes: ['gifs', 'stickers', 'emoji', 'text'],
+      },
+      selectedMedia => {
+        this.setState({
+          stickers: [...this.state.stickers, {url: selectedMedia.images.downsized.url, height: 120, width: 120}],
+          showStickerTools: true,
+          currentStickerIdx: Object.keys(this.state.stickers).length,
+          showDrawTools: false,
+          showTextTools: false,
+          resizeMode: false
+        })
+      }
+    )
+  }
+  addText(){
+    if(Object.keys(this.state.texts).length > 0){
+      var nid = this.state.texts[Object.keys(this.state.texts).length - 1].id + 1
+    } else {
+      var nid = 1
+    }
+   this.setState({
+      texts: [...this.state.texts, {id: nid, text: 'Add Text', FontSize: 35, FontFamily: 'impact', FontColor: 'white', TextAlign: 'center', LineHeight: 40, BackgroundColor: 'transparent'}],
+      showTextTools: false,
+      editingTextID: nid,
+      showDrawTools: false,
+      showStickerTools: false,
+      resizeMode: false
+    })
+  }
+  showSelectedImages = ({item, index}) => (
+    this.state.numImages == 1 ? <NativeImage source={{uri: item}} style={{flex: 1}} resizeMode="contain" />
+    : this.state.numImages == 2 ? <StaticCollage matrix={twoMatrix[index]} width='100%'
+    height='100%'
+    images={ 
+      this.state.images
+    }/> :  this.state.numImages == 3 ? <StaticCollage matrix={threeMatrix[index]} width='100%'
+    height='100%'
+    images={ 
+      this.state.images
+    }/> : this.state.numImages == 4 ? <StaticCollage matrix={fourMatrix[index]} width='100%'
+    height='100%'
+    images={ 
+      this.state.images
+    }/> : null
+  )
+  addContest(idx){
+    for (var i in this.state.contests) {
+      if (this.state.contests[i].title == idx.title) {
+        let data = this.state.contests
+        if(data[i].isChecked == false){
+          this.setState({contestCost: parseInt(this.state.contestCost) +  parseInt(idx.cost), caption: this.state.caption + ' #' + idx.title.replace(/\s/g, '') })
+
+        }else{
+          var copy = this.state.caption
+          var tag = '#' + idx.title.replace(/\s/g, '')
+          var ret = copy.replace(tag,'')
+          this.setState({contestCost: parseInt(this.state.contestCost) - parseInt(idx.cost), caption: ret })
+        }
+         data[i].isChecked = !data[i].isChecked
+         this.setState({contests: data,  })
+         break
+      }
+    }
+  }
+  post(){
+    ToastAndroid.show('Baking your Ugly Meme', ToastAndroid.SHORT)
     let upload = RNFetchBlob.fetch('POST', 'https://lishup.com/app/upload.php', {
             'Content-Type' : 'multipart/form-data',
             "Accept":"multipart/form-data",
           }, [
-            { name : 'image', filename : 'image.jpg', data: RNFetchBlob.wrap(this.state.finalPhoto)},
+            { name : 'image', filename : 'image.jpg', data: RNFetchBlob.wrap(this.state.meme)},
           ])
         setTimeout(()=>{
           upload.uploadProgress({ interval:1 }, (written, total) => {
             let uploaded = (written / total) * 100
-            ToastAndroid.show('Uploading ' + uploaded.toFixed(1) + '%', ToastAndroid.SHORT)
+            ToastAndroid.show(uploaded.toFixed(1) + '% Uploaded', ToastAndroid.SHORT)
       })
         }, 0)
         
         upload.then((resp) => {
-          ToastAndroid.show('Creating your awesome Post', ToastAndroid.SHORT)
+          this.setState({meme: resp.text()})
             fetch('https://lishup.com/app/newpost.php', {
-              method: 'POST',
-              headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                user: this.state.user,
-                text: this.state.postText,
-                img: resp.text(),
-                community: 46
-              }),
-            })
-            .then((response) => response.json())
-            .then((responseJson) => {
-              if(responseJson.msg == "success"){
-                this.props.navigation.navigate('Home', {newMeme: true})
-              }
-             })
-          })
-        upload.catch((err) => {
-            ToastAndroid.show(err, ToastAndroid.SHORT)
-          })
+                method: 'POST',
+                headers: {
+                  Accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                  user: this.state.user, img: resp.text(), 
+                  text: this.state.caption, community: 46, 
+                  cost: this.state.contestCost }),
+              })
+              .then((response) => response.json())
+              .then((responseJson) => {
+                  if(responseJson == 'success'){
+                    ToastAndroid.show('Posted Successfully', ToastAndroid.SHORT)
+                    this.setState({Posted: true, finalize: false})
+                  }else{
+                    ToastAndroid.show(responseJson, ToastAndroid.SHORT)
+                  }
+              })
+              .catch((err) => {
+                console.log(err)
+                ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
+              })
+        })
   }
-  searchImage(keyword){
-    this.setState({loadingUnsplash: true, loadUnsplash: true})
-    fetch('https://api.unsplash.com/search/collections?page=1&per_page=25&query='+keyword+'&client_id=sGacKmZGQy18P-TerxHb6crp_AWupqKgFnp8tE2aMIo', {
-      method: 'GET'
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        this.setState({unsplash: responseJson.results, loadingUnsplash: false })
-      })
-  }
-  renderPhotos = ({item, index}) => (
-      <TouchableOpacity style={{height: Dimensions.get('window').width / 2, width: "50%"}}
-      onPress={() => item.cover_photo ? this.onlineImage(item.cover_photo.urls.regular) : null}>
-     {item.cover_photo ? 
-       <FastImage source={{uri: item.cover_photo.urls.thumb }} style={{flex:1, margin: 2, backgroundColor: '#ababab'}} />
-        : 
-     <FastImage 
-     source={{uri: 'https://media.giphy.com/media/3zhxq2ttgN6rEw8SDx/giphy.gif'}}  style={{flex:1, margin: 2}} />}
-     </TouchableOpacity>
-  )
   render(){
-    if(this.state.loadUnsplash){
+    if(this.state.selectTemplate){
       return(
-        <ApplicationProvider
-    {...eva}
-    theme={this.state.dark ? eva.dark : eva.light}>
-       <Layout style={{  flex: 1, backgroundColor: this.state.dark ? '#151a30' : '#edf1f7' , alignContent: 'center' }}>
-         <Button status="danger" style={{alignSelf: 'center'}} onPress={() => this.setState({loadUnsplash: false})}>Cancel</Button>
-       <Input
-          placeholder='Search Unsplash Free Photos...'
-          onChangeText={val => this.searchImage(val)}
-          maxLength={30}
-          style={{width: "95%", marginVertical: 10, alignSelf: 'center'}}
-        />        
-       <FlatList
-        horizontal={false}
-        numColumns={2}
-        data={this.state.unsplash}
-        renderItem={this.renderPhotos}
-        keyExtractor={(item, idx) => idx}
-        style={{alignSelf: 'center'}}
-        ListEmptyComponent={this.state.loadingUnsplash ? this.Loading : this.Empty}
-        />
-         </Layout>
-       </ApplicationProvider>
+        <View style={{flex: 1, backgroundColor: 'black'}}> 
+           <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 20, marginBottom: 50,
+              fontFamily: 'impact'}}>Choose Layout</NativeText>
+           <TouchableOpacity style={{ top: 20, position: 'absolute', right: 20}} onPress={() =>{
+               if(this.state.numImages > 0 && this.state.numImages < 5){
+                this.setState({selectTemplate: false, isResizing: false, showTextTools: false, showStickerTools: false, showImageTools: false,
+                  matrix: this.state.numImages > 1 ? this.state.numImages == 2 ? twoMatrix[this._carousel.currentIndex] : this.state.numImages == 3 ?
+                  threeMatrix[this._carousel.currentIndex] : fourMatrix[this._carousel.currentIndex] : [] })
+                  this.addText()
+               }else{
+                 ToastAndroid.show('Please choose min 1 and max 4 Photos', ToastAndroid.SHORT)
+               }
+             }}> 
+             <Icon name="arrow-forward-circle" size={40} color="#00BBFF"  
+             /></TouchableOpacity>
+            <Carousel
+              ref={(c) => { this._carousel = c; }}
+              data={this.state.images}
+              renderItem={this.showSelectedImages}
+              sliderWidth={Dimensions.get('window').width}
+              sliderHeight={Dimensions.get('window').height / 2}
+              itemWidth={Dimensions.get('window').width - 70}
+              itemHeight={Dimensions.get('window').height / 2}
+              containerCustomStyle={{marginBottom: 10}}
+              layout={'default'} layoutCardOffset={18}
+            />
+            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 10}}><CheckBox
+                disabled={false}
+                value={this.state.textArea}
+                onValueChange={(newValue) => this.setState({textArea: !this.state.textArea})}
+                tintColors={{true:'#00BBFF', false:'#fff'}}
+              /><NativeText style={{color: 'white'}} onPress={() => this.setState({textArea: !this.state.textArea})}>
+                Add Text Area</NativeText>
+                {this.state.textArea ? 
+           <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 5, marginLeft: 20}}>
+             <Svg width="21" height="43" viewBox="0 0 21 43" fill="none" xmlns="http://www.w3.org/2000/Svg">
+              <Rect x="1" y="0.944336" width="20" height="13.3333" fill="white" fill-opacity="0.2"/>
+              <Rect x="1" y="0.944336" width="20" height="13.3333" fill={this.state.textAtTop ? 'white' : 'black'}/>
+              <Rect x="1.55556" y="29.2776" width="18.8889" height="12.2222" fill={!this.state.textAtTop ? 'white' : 'black'} fill-opacity="0.2" stroke="#C0C0C0" stroke-width="1.11111" stroke-dasharray="2.22 1.11"/>
+              <Path d="M7.74487 8.36212H6.70392V8.11768C6.70392 7.83569 6.73596 7.61871 6.80005 7.46674C6.86597 7.31293 6.99689 7.17743 7.19281 7.06024C7.38873 6.94305 7.64325 6.88446 7.95636 6.88446C8.33173 6.88446 8.61462 6.95129 8.80505 7.08496C8.99548 7.2168 9.10992 7.37976 9.14838 7.57385C9.18683 7.76611 9.20605 8.16345 9.20605 8.76587V10.5951H8.12665V10.271C8.0589 10.401 7.97101 10.499 7.86298 10.5649C7.75677 10.629 7.62952 10.661 7.4812 10.661C7.28711 10.661 7.10858 10.607 6.94562 10.499C6.78448 10.3891 6.70392 10.1501 6.70392 9.7821V9.48273C6.70392 9.2099 6.74695 9.02405 6.83301 8.92517C6.91907 8.82629 7.13239 8.71094 7.47296 8.5791C7.83734 8.43628 8.03235 8.34015 8.05798 8.29071C8.08362 8.24127 8.09644 8.14056 8.09644 7.98859C8.09644 7.79816 8.08179 7.67456 8.05249 7.6178C8.02502 7.5592 7.97833 7.52991 7.91241 7.52991C7.83734 7.52991 7.79065 7.55463 7.77234 7.60407C7.75403 7.65167 7.74487 7.7771 7.74487 7.98035V8.36212ZM8.09644 8.862C7.91882 8.992 7.81537 9.10095 7.78607 9.18884C7.75861 9.27673 7.74487 9.40308 7.74487 9.56787C7.74487 9.75647 7.75677 9.87823 7.78058 9.93317C7.80621 9.9881 7.85565 10.0156 7.92889 10.0156C7.99847 10.0156 8.04333 9.99451 8.06348 9.95239C8.08545 9.90845 8.09644 9.79492 8.09644 9.61182V8.862ZM10.6974 6.14838V7.20032C10.789 7.09412 10.8906 7.01538 11.0023 6.96411C11.1158 6.91101 11.2385 6.88446 11.3704 6.88446C11.5223 6.88446 11.6542 6.90826 11.7659 6.95587C11.8776 7.00348 11.9627 7.07031 12.0213 7.15637C12.0799 7.24243 12.1147 7.32666 12.1257 7.40906C12.1385 7.49146 12.1449 7.66724 12.1449 7.9364V9.57886C12.1449 9.84619 12.1266 10.0458 12.09 10.1776C12.0552 10.3076 11.9719 10.4211 11.84 10.5182C11.7082 10.6134 11.5516 10.661 11.3704 10.661C11.2404 10.661 11.1186 10.6326 11.0051 10.5759C10.8934 10.5191 10.7908 10.434 10.6974 10.3204L10.626 10.5951H9.58783V6.14838H10.6974ZM11.0353 7.98584C11.0353 7.79724 11.0234 7.67456 10.9996 7.6178C10.9758 7.5592 10.9291 7.52991 10.8595 7.52991C10.7917 7.52991 10.7478 7.55554 10.7277 7.60681C10.7075 7.65625 10.6974 7.78259 10.6974 7.98584V9.55688C10.6974 9.75281 10.7084 9.87823 10.7304 9.93317C10.7542 9.9881 10.8 10.0156 10.8677 10.0156C10.9373 10.0156 10.9822 9.98718 11.0023 9.93042C11.0243 9.87366 11.0353 9.73724 11.0353 9.52118V7.98584ZM14.9629 8.32642H13.9164V7.90619C13.9164 7.7597 13.9045 7.66083 13.8807 7.60956C13.8569 7.55646 13.813 7.52991 13.7489 7.52991C13.6848 7.52991 13.6418 7.5528 13.6198 7.59857C13.5978 7.64435 13.5869 7.74689 13.5869 7.90619V9.62555C13.5869 9.75555 13.6033 9.85352 13.6363 9.91943C13.6692 9.98352 13.7178 10.0156 13.7819 10.0156C13.8569 10.0156 13.9073 9.98169 13.9329 9.91394C13.9604 9.84619 13.9741 9.71802 13.9741 9.52942V9.09546H14.9629C14.9611 9.3866 14.9501 9.60541 14.9299 9.75189C14.9116 9.89655 14.8503 10.0458 14.7459 10.1996C14.6434 10.3516 14.5088 10.4669 14.3422 10.5457C14.1755 10.6226 13.9695 10.661 13.7242 10.661C13.4111 10.661 13.163 10.6079 12.9799 10.5017C12.7968 10.3937 12.6667 10.2435 12.5898 10.0513C12.5148 9.85718 12.4772 9.58252 12.4772 9.2273V8.19183C12.4772 7.88239 12.5084 7.64893 12.5706 7.49146C12.6329 7.33398 12.7656 7.19391 12.9689 7.07123C13.1721 6.94672 13.4193 6.88446 13.7104 6.88446C13.9998 6.88446 14.2469 6.9458 14.452 7.06848C14.6571 7.19116 14.7935 7.34589 14.8613 7.53265C14.929 7.71942 14.9629 7.98401 14.9629 8.32642Z" fill="black"/>
+              <Path d="M7.74487 36.14H6.70392V35.8955C6.70392 35.6135 6.73596 35.3965 6.80005 35.2446C6.86597 35.0908 6.99689 34.9553 7.19281 34.8381C7.38873 34.7209 7.64325 34.6623 7.95636 34.6623C8.33173 34.6623 8.61462 34.7291 8.80505 34.8628C8.99548 34.9946 9.10992 35.1576 9.14838 35.3517C9.18683 35.5439 9.20605 35.9413 9.20605 36.5437V38.3729H8.12665V38.0488C8.0589 38.1788 7.97101 38.2768 7.86298 38.3427C7.75677 38.4068 7.62952 38.4388 7.4812 38.4388C7.28711 38.4388 7.10858 38.3848 6.94562 38.2768C6.78448 38.1669 6.70392 37.928 6.70392 37.5599V37.2606C6.70392 36.9877 6.74695 36.8019 6.83301 36.703C6.91907 36.6041 7.13239 36.4888 7.47296 36.3569C7.83734 36.2141 8.03235 36.118 8.05798 36.0685C8.08362 36.0191 8.09644 35.9184 8.09644 35.7664C8.09644 35.576 8.08179 35.4524 8.05249 35.3956C8.02502 35.337 7.97833 35.3077 7.91241 35.3077C7.83734 35.3077 7.79065 35.3325 7.77234 35.3819C7.75403 35.4295 7.74487 35.5549 7.74487 35.7582V36.14ZM8.09644 36.6398C7.91882 36.7698 7.81537 36.8788 7.78607 36.9667C7.75861 37.0546 7.74487 37.1809 7.74487 37.3457C7.74487 37.5343 7.75677 37.6561 7.78058 37.711C7.80621 37.7659 7.85565 37.7934 7.92889 37.7934C7.99847 37.7934 8.04333 37.7723 8.06348 37.7302C8.08545 37.6863 8.09644 37.5728 8.09644 37.3896V36.6398ZM10.6974 33.9262V34.9781C10.789 34.8719 10.8906 34.7932 11.0023 34.7419C11.1158 34.6888 11.2385 34.6623 11.3704 34.6623C11.5223 34.6623 11.6542 34.6861 11.7659 34.7337C11.8776 34.7813 11.9627 34.8481 12.0213 34.9342C12.0799 35.0203 12.1147 35.1045 12.1257 35.1869C12.1385 35.2693 12.1449 35.4451 12.1449 35.7142V37.3567C12.1449 37.624 12.1266 37.8236 12.09 37.9554C12.0552 38.0854 11.9719 38.199 11.84 38.296C11.7082 38.3912 11.5516 38.4388 11.3704 38.4388C11.2404 38.4388 11.1186 38.4105 11.0051 38.3537C10.8934 38.2969 10.7908 38.2118 10.6974 38.0983L10.626 38.3729H9.58783V33.9262H10.6974ZM11.0353 35.7637C11.0353 35.5751 11.0234 35.4524 10.9996 35.3956C10.9758 35.337 10.9291 35.3077 10.8595 35.3077C10.7917 35.3077 10.7478 35.3334 10.7277 35.3846C10.7075 35.4341 10.6974 35.5604 10.6974 35.7637V37.3347C10.6974 37.5306 10.7084 37.6561 10.7304 37.711C10.7542 37.7659 10.8 37.7934 10.8677 37.7934C10.9373 37.7934 10.9822 37.765 11.0023 37.7083C11.0243 37.6515 11.0353 37.5151 11.0353 37.299V35.7637ZM14.9629 36.1042H13.9164V35.684C13.9164 35.5375 13.9045 35.4387 13.8807 35.3874C13.8569 35.3343 13.813 35.3077 13.7489 35.3077C13.6848 35.3077 13.6418 35.3306 13.6198 35.3764C13.5978 35.4222 13.5869 35.5247 13.5869 35.684V37.4034C13.5869 37.5334 13.6033 37.6313 13.6363 37.6973C13.6692 37.7614 13.7178 37.7934 13.7819 37.7934C13.8569 37.7934 13.9073 37.7595 13.9329 37.6918C13.9604 37.624 13.9741 37.4958 13.9741 37.3073V36.8733H14.9629C14.9611 37.1644 14.9501 37.3832 14.9299 37.5297C14.9116 37.6744 14.8503 37.8236 14.7459 37.9774C14.6434 38.1294 14.5088 38.2448 14.3422 38.3235C14.1755 38.4004 13.9695 38.4388 13.7242 38.4388C13.4111 38.4388 13.163 38.3857 12.9799 38.2795C12.7968 38.1715 12.6667 38.0214 12.5898 37.8291C12.5148 37.635 12.4772 37.3604 12.4772 37.0051V35.9697C12.4772 35.6602 12.5084 35.4268 12.5706 35.2693C12.6329 35.1118 12.7656 34.9717 12.9689 34.8491C13.1721 34.7245 13.4193 34.6623 13.7104 34.6623C13.9998 34.6623 14.2469 34.7236 14.452 34.8463C14.6571 34.969 14.7935 35.1237 14.8613 35.3105C14.929 35.4973 14.9629 35.7618 14.9629 36.1042Z" fill="black"/>
+              <Rect x="1.71429" y="13.8808" width="18.5714" height="15.2381" fill="black" stroke="white" stroke-width="1.42857"/>
+              <Path d="M7.58484 24.1313L9.92859 26.9532L13.2098 22.7251L17.4286 28.3501H4.30359L7.58484 24.1313Z" fill="black" stroke="white" stroke-width="1.875"/>
+              </Svg>
+        <View><CheckBox
+           disabled={false}
+           value={this.state.textAtTop}
+           onValueChange={(newValue) => this.setState({textAtTop: !this.state.textAtTop})}
+           tintColors={{true:'#00BBFF', false:'#fff'}}
+         />
+         <CheckBox
+           disabled={false}
+           value={!this.state.textAtTop}
+           onValueChange={(newValue) => this.setState({textAtTop: !this.state.textAtTop})}
+           tintColors={{true:'#00BBFF', false:'#fff'}}
+         /></View>
+           </View> : null}    
+            </View>
+              
+          <View style={{alignSelf: 'center', width: '100%', marginBottom: 15, justifyContent: 'space-evenly',
+             alignItems: 'center', flexDirection: 'row'}}>
+            <TouchableOpacity onPress={() => this.getPhotos()}>
+            <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'device' ?
+              1 : 0.5}} >Camera Roll</NativeText>
+              </TouchableOpacity>
+            <TouchableOpacity onPress={() => this.getTemplates()}> 
+            <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'templates' ?
+              1 : 0.5}}>Meme Templates</NativeText></TouchableOpacity>
+          </View> 
+           <View style={{height: Dimensions.get('window').height / 2.5}}>
+          <FlatList 
+            data={this.state.photos}
+            renderItem={this.renderGallery}
+            keyExtractor={(item, idx) => idx}
+            numColumns={3}
+            refreshControl={<RefreshControl
+              colors={["yellow", "orange"]}
+              onRefresh={() => {
+                this.getPhotos()
+                this.setState({refreshingPhotos: true})
+              }}
+              refreshing={this.state.refreshingPhotos} />}
+          /></View>
+        </View>
       )
     }else{
-    return(
-      <ApplicationProvider
-    {...eva}
-    theme={this.state.dark ? eva.dark : eva.light}>
-       <Layout style={{  flex: 1, backgroundColor: this.state.dark ? '#151a30' : '#edf1f7' , alignContent: 'center' }}>
-        {this.state.finalPhoto ? <FastImage source={{uri: this.state.finalPhoto}} style={{height: "50%", width: "95%", borderRadius: 10,
-          marginVertical: 20, alignSelf: 'center' }} resizeMode="cover" /> : 
-        <FastImage source={{uri: 'https://media0.giphy.com/media/giL67kMX7PsvCAmmzV/giphy.gif' }} 
-        style={{height: 200, width: 200, alignSelf: 'center'}} /> }
-        {this.state.finalPhoto ? null : <Button style={{alignSelf: 'center', marginVertical: 20}} 
-        onPress={() => this.editImage()}>Choose a photo for ᗰEᗰE</Button>}
-        {this.state.finalPhoto ? null : <Button style={{alignSelf: 'center', marginVertical: 20}} 
-        onPress={() => this.searchImage('funny')} appearance="outline">Choose from free Online Photo</Button>}
-        {this.state.finalPhoto ? null : <Button appearance="outline" style={{alignSelf: 'center', marginVertical: 20}}  onPress={() => {
-              GiphyUi.present(
-                {
-                  theme: 'light',
-                  layout: 'waterfall',
-                  showConfirmationScreen: true,
-                  mediaTypes: ['gifs', 'stickers', 'text'],
-                },
-                selectedMedia => {
-                  this.onlineGIF(selectedMedia.images.downsized.url)
-                }
-              );
-            }}>Choose a GIF Frame</Button>}
 
-        {this.state.finalPhoto ? <Input
-              value={this.state.postText}
-              placeholder='Say Something about your awesome ᗰEᗰE...'
-              caption='Remeber! Max 50 chars!!'
-              onChangeText={val => this.setState({postText: val})}
-              size="large"
-              multiline={true}
-              maxLength={50} style={{width:"95%", minHeight: 64, marginVertical: 10, alignSelf: 'center'}}
-            />
-            : null}
-            {this.state.finalPhoto ? <Button style={{ width: "93%", alignSelf: 'center', marginVertical: 20}} 
-              size="large" onPress={() => this.submit()}>Share</Button> :  null}
-            
-      </Layout>
-      </ApplicationProvider>
+    if(!this.state.finalize && !this.state.Posted){
+    return(
+      <View style={{alignContent: 'center', backgroundColor: 'black', flex: 1}}>
+        <Modal visible={this.state.isResizing && this.state.numImages == 1}
+        onDismiss={() => {
+          this.setState({isResizing: !this.state.isResizing})
+        }}
+        onRequestClose={() => {
+          this.setState({isResizing: !this.state.isResizing})
+        }}>
+        <View style={{backgroundColor: 'black', justifyContent: 'center', flex: 1}}>
+          <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, borderRadius: 15, top: 30, right: 20,
+           position: 'absolute', elevation: 10}} 
+          onPress={() => this.cropImg.saveImage(true, 90)}><NativeText style={{color: 'white', fontSize: 25}}>Done</NativeText></TouchableOpacity>
+          <CropView
+            sourceUrl={this.state.images[0]}
+            style={{height: (Dimensions.get('window').height * 60) / 100, width: '100%', resizeMode: 'cover'}}
+            onImageCrop={(res) => this.setState({images: [res.uri], isResizing: false})}
+            ref={ref => this.cropImg = ref}
+          />
+          <TouchableOpacity style={{bottom: 30, left: 40,
+           position: 'absolute', elevation: 10}} 
+          onPress={() => this.cropImg.rotateImage(true)}><Icon name="reload-outline" size={40} color="white" /></TouchableOpacity>
+          </View>
+        </Modal>
+        <View style={{height: 100, backgroundColor: 'black', zIndex: 4}} >
+        <Icon name="arrow-forward-circle" size={40} color="#00BBFF" style={{ top: 20, position: 'absolute', right: 20}} 
+             onPress={() => this.refs.viewShot.capture().then(uri => {
+              console.log("do something with ", uri)
+              this.setState({meme: uri, finalize: true})
+              this.fetchContests()
+            })}/>
+        </View>
+        <ViewShot ref="viewShot" options={{ format: "jpg", quality: 0.9 }}>
+        <View style={{ height: (Dimensions.get('window').height * 60) / 100, width: '100%', flexDirection: 'row', position: 'absolute',
+         marginTop: this.state.textAtTop && this.state.textArea ? 70 : 0, backgroundColor: 'transparent' }}>
+         <SketchCanvas
+            style={{ flex: 1, backgroundColor: 'transparent', zIndex: this.state.isResizing ? -10 : -2 }}
+            strokeColor={this.state.strokeColor}
+            strokeWidth={this.state.strokeWidth}
+            ref={ref => this.canvas = ref}
+          />
+          </View>
+          {this.state.texts.map((item, idx) => {
+               return (  <DragTextEditor
+              minWidth={100}
+              minHeight={100}
+              w={200}
+              h={200}
+              x={10}
+              y={10}
+              FontColor={item.FontColor}
+              LineHeight={item.LineHeight}
+              TextAlign={item.TextAlign}
+              BackgroundColor={item.BackgroundColor}
+              TopRightAction={() => { 
+                const filtered = [...this.state.texts].filter(x => x.id !== item.id)
+                this.setState({
+                  texts:filtered, showStickerTools: false, showTextTools: false, showDrawTools: false 
+                })
+              }}
+              PlaceHolder={item.text}
+              FontSize={item.FontSize}
+              centerPress={() => this.setState({showTextTools: true, editingTextID: item.id, currentTextColor: item.FontColor,
+               currentBGColor: item.BackgroundColor })}
+              FontFamily={item.FontFamily}
+              style={{borderRadius: 8, zIndex: 200 }}
+              isStroke={item.FontFamily == 'impact' ? true : false}
+            /> )
+               })
+            }
+           {
+             this.state.stickers.map((item, idx) => {
+               return ( <Gestures ref={(c) => { this.gestures = c; }} onEnd={(event, styles) => {
+                console.log(styles)
+                this.setState({enableDelete: false})
+                if(styles.top > (Dimensions.get('window').height * 60) / 100){
+                  let copy = [...this.state.stickers]
+                  copy.splice(idx, 1)
+                  this.setState({
+                    stickers: copy, showStickerTools: false, showTextTools: false, showDrawTools: false 
+                  })
+                }
+              }}
+                onStart={(event, styles) => {
+                  this.setState({enableDelete: true})
+                }}
+                rotatable={false} style={{position: 'absolute', left: 0, right: 0, alignItems: "center"}} scalable={{
+                  min: 0.1,
+                  max: 5,
+                }}>
+                 <TouchableOpacity onPress={() => this.setState({showStickerTools: true, currentStickerIdx: idx})}>
+                 <FastImage source={{uri: item.url}} style={{height: item.height, width: item.width}} resizeMode="contain"/>
+                 </TouchableOpacity>
+               </Gestures> )
+             })
+           } 
+        {this.state.textAtTop && this.state.textArea  ?  <NativeImage source={require('./textArea.png')} style={{width: '100%', 
+          height: 70,  alignSelf: 'center', zIndex: this.state.isResizing ? 3 : -1}} />   : null}
+    { this.state.numImages == 1 ? <NativeImage
+        source={{uri: this.state.remixUri ? this.state.remixUri : this.state.images[0]}}
+        style={{height: (Dimensions.get('window').height * 60) / 100, width: '100%', zIndex: -10}} resizeMode="contain"
+      /> : <DynamicCollage
+    width='100%'
+    height={(Dimensions.get('window').height * 60) / 100}
+    images={this.state.images}
+    matrix={ this.state.matrix }
+    containerStyle={{borderWidth: 0, borderColor: 'transparent', alignSelf: 'center', zIndex: this.state.isResizing ? 2 : -10}} /> }
+    {!this.state.textAtTop && this.state.textArea ?  <NativeImage source={require('./textArea.png')} style={{width: '100%', 
+          height: 70,  alignSelf: 'center', zIndex: this.state.isResizing ? 3 : -1}} /> : null}
+    </ViewShot>
+    
+    <View style={{flexDirection: 'row', backgroundColor: 'black', justifyContent: 'space-evenly', paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#f2f2f2',
+     zIndex: 4, bottom: 0, right: 0, left: 0, position: 'absolute'}}>
+      <Icon name="text" size={30} color={this.state.showTextTools ? "#45DAFF" : "white"} 
+        onPress={() => { this.addText() }}/>
+      <View>
+      <Icon name="brush" size={30} color={this.state.showDrawTools ? "#45DAFF" : "white"} onPress={() => this.setState({showDrawTools: true, 
+        showTextTools: false, showStickerTools: false, isResizing: false}) }/>
+      {this.state.showDrawTools ? <TouchableOpacity onPress={() => this.setState({showDrawTools: false}) } 
+       style={{backgroundColor: '#05FF00', padding: 3, height: 42, borderRadius: 20, marginTop: 2}}>
+        <Icon size={35} name="md-checkmark-done" color="white"  /></TouchableOpacity> : null} 
+      </View>
+      <View>
+        <Icon name="crop" size={30} color={this.state.isResizing ? "#45DAFF" : "white"}
+        onPress={() => { 
+          if(this.state.showPhotosFrom == 'templates' && this.state.numImages == 1){
+            ToastAndroid.show('Loading...', ToastAndroid.SHORT)
+            RNFetchBlob
+            .config({
+              // add this option that makes response data to be stored as a file,
+              // this is much more performant.
+              fileCache : true,
+            })
+            .fetch('GET', this.state.images[0], {
+              //some headers ..
+            })
+            .then((res) => {
+              console.log(res.path())
+              this.setState({images: ['file://' + res.path()]})
+              this.setState({isResizing: !this.state.isResizing, 
+                showTextTools: false, showStickerTools: false})
+            })
+          }else{
+            this.setState({isResizing: !this.state.isResizing, 
+              showTextTools: false, showStickerTools: false})
+          }
+           }} />
+        {this.state.isResizing ? <TouchableOpacity onPress={() => this.setState({isResizing: false}) } 
+       style={{backgroundColor: '#05FF00', padding: 3, height: 42, borderRadius: 20, marginTop: 2}}>
+        <Icon size={35} name="md-checkmark-done" color="white"  /></TouchableOpacity> : null}
+       </View>
+      <Icon name="md-happy" size={30} color={this.state.showStickerTools ? "#45DAFF" : "white"} onPress={() => this.addSticker() } />
+      <Icon name="image" size={30} color="white" 
+        color={this.state.showImageTools ? "#45DAFF" : "white"} onPress={() => {
+          this.getPhotos()
+          this.setState({showImageTools: true})} } />
+    </View>
+    {this.state.enableDelete ?
+    <Icon name="md-trash-bin" size={50} color="white" style={{position: 'absolute', bottom: 50, zIndex: 20, alignSelf: 'center'}} />
+       : null}
+    <Modal transparent={true} animationType="slide" visible={this.state.showImageTools}
+        onDismiss={() => {
+          this.setState({showImageTools: !this.state.showImageTools})
+        }}
+        onRequestClose={() => {
+          this.setState({showImageTools: !this.state.showImageTools})
+        }}>
+      <View style={{backgroundColor: 'rgba(0, 0, 0, 0.8)', height: Dimensions.get('window').height / 2, bottom: 0, position: 'absolute',
+        borderTopLeftRadius: 15, borderTopRightRadius: 15}}>
+      <NativeText style={{fontSize: 20, color: 'white', textAlign: 'center', marginVertical: 10}}>Choose a Photo</NativeText>
+      <FlatList 
+            data={this.state.photos}
+            renderItem={this.renderPickerGallery}
+            keyExtractor={(item, idx) => idx}
+            numColumns={2}
+            refreshControl={<RefreshControl
+              colors={["#9Bd35A", "#689F38"]}
+              onRefresh={() => {
+                this.getPhotos()
+                this.setState({refreshingPhotos: true})
+              }}
+              refreshing={this.state.refreshingPhotos} />}
+          />
+      </View>
+    </Modal>
+    <Modal transparent={true} visible={this.state.showTextTools}
+        onDismiss={() => {
+          this.setState({showTextTools: !this.state.showTextTools})
+        }}
+        onRequestClose={() => {
+          this.setState({showTextTools: !this.state.showTextTools})
+        }}>
+      <View style={{backgroundColor: 'rgba(0, 0, 0, 0.5)', height: Dimensions.get('window').height}}>
+
+        <View style={{position: 'absolute', margin: 0, alignSelf: 'flex-start', top: 100, left: 0, right: 0, alignItems: 'center'}}>
+           <Slider minimumValue={15} maximumValue={50} onValueChange={val => this.changeTextSize(val)} style={{width: 200, height: 40}}
+            thumbTintColor="white" minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="#fff" thumbImage={this.state.thumbIcon} value={this.getTextDetails(null, 'FontSize')} />
+            </View>
+        <View style={{position: 'absolute', alignSelf: 'center', top: 0, bottom: 0, justifyContent: 'center'
+         }}>
+        <TextInput onChangeText={val => this.changeText(val)} value={this.getTextDetails(null, 'text')} placeholder="Aa"
+         style={{backgroundColor: 'transparent',  alignSelf: 'center', top: 0, bottom: 0, borderWidth: 0, borderColor: 'transparent',
+         color: 'white', fontSize: 25, textAlign: 'center'}} 
+           autoFocus={true} multiline={true} />
+           <View style={{height: 50, alignSelf: 'center', width: '90%', marginTop: 30}}>
+             <FlatList data={[{name: 'impact', title: 'Meme'}, {name: 'Arial', title: 'Classic'},
+            {name: 'comicz', title: 'Comic'}, {name: 'Satisfy-Regular', title: 'Fancy'}, {name: 'Jokerman-Regular', title: 'Joker'}]}
+            renderItem={({item, idx}) => (
+              <NativeText style={{backgroundColor: this.getTextDetails(item.name) ? '#000' : '#fff', color: this.getTextDetails(item.name) ? '#fff' : 'black', 
+          borderRadius: 15, padding: 10, paddingVertical: 5, fontSize: 25, marginHorizontal: 2, fontFamily: item.name }}
+              onPress={() => this.changeTextFont(item.name)}>{item.title}</NativeText>
+            )} horizontal={true} 
+            /></View>
+         </View>
+
+         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, borderRadius: 15, top: 30, right: 20,
+           position: 'absolute', elevation: 10}} 
+          onPress={() => this.setState({showTextTools: false})}><NativeText style={{color: 'white', fontSize: 25}}>Done</NativeText></TouchableOpacity>
+      <View style={{ top: 100, height: '80%', alignSelf: 'flex-end'}}> 
+        {this.getTextDetails('impact') ? null : <NativeText style={{backgroundColor: this.state.enableLabel ? '#000' : 'transparent', color: this.state.enableLabel ? '#fff' : 'white', 
+        borderRadius: 15, marginRight: 8, padding: 10, paddingVertical: 5, fontSize: 25, alignSelf: 'flex-end' }}
+            onPress={() =>{ this.setState({enableLabel: !this.state.enableLabel}) }}>Aa</NativeText>}
+          {this.state.enableLabel ? <FlatList 
+        data={colors}
+        renderItem={this.renderBgColors}
+        showsVerticalScrollIndicator ={false}
+        extraData={this.state}
+        />: <FlatList 
+        data={colors}
+        renderItem={this.renderColors}
+        showsVerticalScrollIndicator ={false}
+        extraData={this.state}
+        />}</View>
+        </View>   
+    </Modal>
+    {this.state.showStickerTools ? 
+    <Icon size={40} name="arrow-undo-circle-outline" color="white" 
+    style={{marginHorizontal: 10, top:50, elevation: 50, zIndex: 50, right: 30,  position: 'absolute'}}
+       onPress={() => this.gestures.reset((prevStyles) => {
+        console.log(prevStyles)})} />: null}
+   {this.state.showDrawTools ? 
+    <View style={{top:0, bottom: 50, position: 'absolute',  left: 0, right: 0}}>
+      <View style={{alignSelf: 'flex-start', marginLeft: 5, alignItems: 'center', position: 'absolute',
+       borderRadius: 10, alignContent: 'center', top: 150}}>
+        <FlatList 
+       data={brushSizes}
+       renderItem={this.renderBrushes}
+       showsVerticalScrollIndicator ={false}
+       extraData={this.state}
+      /></View>
+      <View style={{alignSelf: 'flex-end', marginRight: 5, alignItems: 'center', top: 150, position: 'absolute', height: '50%',
+      }}><FlatList 
+       data={colors}
+       renderItem={this.renderDrawColors}
+       showsVerticalScrollIndicator ={false}
+       extraData={this.state}
+      /></View>
+      <View style={{top:50, elevation: 50, zIndex: 50, right: 30,  position: 'absolute', flexDirection: 'row'}}>
+      <TouchableOpacity onPress={() => this.canvas.undo() }>
+      <Icon size={40} name="arrow-undo-circle-outline" color="white" style={{marginHorizontal: 10}} /></TouchableOpacity>
+      <TouchableOpacity onPress={() => this.setState({strokeColor: 'transparent'}) }>
+      <EnIcon size={40} name="eraser" color="white" /></TouchableOpacity>  
+      </View>
+    </View> : null}
+    </View>
     )
+    }else if(this.state.finalize && !this.state.Posted){
+      return(
+        <View style={{flex: 1, backgroundColor: 'black'}}> 
+          <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Share</NativeText>
+          <TextInput style={{backgroundColor:'#747474', color: '#fff', width: '100%',  padding: 15, marginBottom: 0,
+          fontSize: 15, 
+          textAlign: 'center', margin: 0}}
+           placeholder="Add a Tagline" placeholderTextColor="white" maxLength={50}
+           onChangeText={val => this.setState({caption: val})} value={this.state.caption} />
+          <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
+            marginTop: 0}} resizeMode="contain" />
+            <ScrollView>
+         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+          onPress={() => this.setState({showConfirmation: true})}>
+            <NativeText style={{color: 'white', fontSize: 25}}>Post</NativeText></TouchableOpacity>
+         
+         <Overlay overlayStyle={{alignSelf: 'center', backgroundColor: 'black', justifyContent: 'center', alignItems: 'center', borderRadius: 20,
+           maxHeight: '60%', minHeight: '15%', width: '90%', borderColor: 'white', 
+          borderWidth: 1, padding: 10}} backdropStyle={{backgroundColor: 'rgba(0, 0, 0,0.7)', flex: 1}}
+            isVisible={this.state.showConfirmation}  onBackdropPress={() => this.setState({showConfirmation: false})}>
+            <NativeText style={{color: 'white', fontSize: 30, fontFamily: 'impact', margin: 5, marginBottom: 5,}}>Join Contests!</NativeText>
+            <NativeText style={{color: 'white', opacity: 0.5, marginBottom: 15,}}>Meme & Win</NativeText>
+            <FlatList data={this.state.contests}
+             renderItem={({item, idx}) => (
+               <View style={{flexDirection: 'row', alignItems: 'center', margin: 8}}>
+                 <Icon name={item.isChecked ? 'md-checkmark-circle' : 'md-checkmark-circle-outline'} size={30} 
+                 color={item.isChecked ? "#5200FF" : 'white'} onPress={() => this.addContest(item)}/>
+                 <View>
+                 <NativeText style={{color: 'white', textAlign: 'center', fontSize: 20, margin: 5}} >
+                   #{item.title.replace(/\s/g, '')}</NativeText>
+                 <NativeText style={{fontSize: 10,
+                   opacity: 0.5, color: 'white'}}>Winner gets {item.prize} Gems</NativeText>
+                 </View>
+                  <NativeText style={{ fontSize: 20, marginLeft: 5, alignItems: 'center', color: 'white'}}>
+                    {parseInt(item.cost)} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg>
+                </NativeText>
+                </View>
+             )} keyExtractor={(item, idx) => idx} />
+          <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+          onPress={() => this.post()}>
+            <NativeText style={{color: 'white', fontSize: 25}}>
+              Continue {this.state.contestCost} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></NativeText></TouchableOpacity>
+          </Overlay>
+
+          </ScrollView>
+        </View>   
+      )  
+    }else if(this.state.Posted && !this.state.finalize){
+      return(
+      <View style={{flex: 1, backgroundColor: 'black'}}> 
+      <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Meme Posted</NativeText>
+      <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
+        marginTop: 0}} resizeMode="contain" />
+      <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, flexDirection: 'row', alignItems: 'center',
+      paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+          onPress={() => this.props.navigation.navigate('Profile', {
+            user: this.state.user,
+            dark: this.state.dark
+          })}>
+            <Icon name="eye" size={25} color="white" />  
+     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>View Post</NativeText></TouchableOpacity>
+     <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, 
+     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+          onPress={() => {Clipboard.setString(this.state.meme)
+          ToastAndroid.show('Link to Meme Copied', ToastAndroid.SHORT)}}>   
+          <Icon name="copy" size={25} color="white" />            
+     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Copy Link</NativeText></TouchableOpacity>
+
+    </View>
+      )   
+    }
   }
-}
+  }
 }
 class Profile extends React.Component{
 
@@ -2771,7 +3391,7 @@ class Profile extends React.Component{
       headerRight: 
         params.showStore ? ( <View style={{flexDirection: 'row'}}>
         <TouchableOpacity onPress={navigation.getParam("changeProfile")} style={{marginHorizontal: 20}}>
-          <Icon name="account-edit-outline" size={30} color={ params.darktheme ? '#edf1f7' : '#151a30' } />
+          <Icon name="ios-pencil" size={30} color={ params.darktheme ? '#edf1f7' : '#151a30' } />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('Settings', {dark: params.darktheme})} style={{marginHorizontal: 20}}>
           <Svg width="27" height="28" viewBox="0 0 27 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2814,7 +3434,13 @@ class Profile extends React.Component{
       {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510916747526154/noun_Sunglasses_11582603x.png', flairPrice: 180},
       {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510917692293150/noun_Sunglasses_18565193x.png', flairPrice: 180}
     ],
-    previewSunglass: false
+    previewSunglass: false,
+    follows: false,
+    moreOptions: false,
+    reportUser: false,
+    reportReason: '',
+    followtype: 'following',
+    followData: []
   }
   constructor(props){
     super(props)
@@ -2963,20 +3589,31 @@ class Profile extends React.Component{
        }
      })
   }
-  follow(user){
-    if(this.state.data.isfollowing == 'no'){
-      let data = this.state.data
-      data.isfollowing = 'yes'
-      data.followers = data.followers + 1
-      this.setState({data: data})
-      this.props.navigation.setParams({ isfollowing :  'yes' })
-     }else{
-      let data = this.state.data
-      data.isfollowing = 'no'
-      data.followers = data.followers - 1
-      this.setState({data: data})
-      this.props.navigation.setParams({ isfollowing :  'no' })
-     }
+  follow(user, type){
+    if(type == "list"){
+        for (var i in this.state.followData) {
+          if (this.state.followData[i].user == user) {
+            let data = this.state.followData
+             data[i].isfollowing = data[i].isfollowing > 0 ? 0 : 1
+             this.setState({followData: data})
+             break
+          }
+        }
+    }else{
+      if(this.state.data.isfollowing == 'no'){
+        let data = this.state.data
+        data.isfollowing = 'yes'
+        data.followers = data.followers + 1
+        this.setState({data: data})
+        this.props.navigation.setParams({ isfollowing :  'yes' })
+       }else{
+        let data = this.state.data
+        data.isfollowing = 'no'
+        data.followers = data.followers - 1
+        this.setState({data: data})
+        this.props.navigation.setParams({ isfollowing :  'no' })
+       }
+    }
 
     fetch('https://lishup.com/app/newfollow.php', {
       method: 'POST',
@@ -3075,7 +3712,7 @@ class Profile extends React.Component{
                await Share.share({
                  message: '<a href="lishup://meme/profile?user=' + this.state.profileUser + '">Visit My Profile in Meme</a>'
                })
-             }}><Icon name="share-variant" size={25} /></Button>
+             }}><Icon name="ios-share-social" size={25} /></Button>
         </View>
       )
     }else{
@@ -3095,7 +3732,7 @@ class Profile extends React.Component{
                await Share.share({
                  message: 'lishup://meme/profile?user=' + this.state.profileUser
                })
-             }}><Icon name="share-variant" size={25} /></Button>
+             }}><Icon name="ios-share-social" size={25} /></Button>
         </View>
       )
     }
@@ -3163,6 +3800,24 @@ class Profile extends React.Component{
             }
           })
   }
+  fetchFollows(type){
+    this.setState({follows: true, followtype: type})
+    fetch('https://lishup.com/app/getFollows.php', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+           user: this.state.user,
+           type: type
+          }),
+        })
+        .then((response) => response.json())
+          .then((responseJson) => {
+                this.setState({followData: responseJson})
+       })
+  }
   followbtn(){
     if(this.state.user != this.state.profileUser){
     if(this.props.navigation.getParam('isfollowing') == 'no'){
@@ -3170,22 +3825,48 @@ class Profile extends React.Component{
           <ApplicationProvider
         {...eva}
         theme={this.state.dark ? eva.dark : eva.light }>
+          <View style={{flexDirection: 'row'}}>
+          <EnIcon name="dots-three-horizontal" size={20} color="black" onPress={() => this.setState({moreOptions: true})}/>
           <Button style={{ borderColor: 'transparent',
           marginHorizontal: 20, borderRadius: 30, elevation: 10, width: "80%"}}
           onPress={() => this.follow(this.state.profileUser)}>
-            Follow</Button></ApplicationProvider>
+            Follow</Button>
+            </View></ApplicationProvider>
         )
       } else if(this.props.navigation.getParam('isfollowing') == 'yes') { 
       return <ApplicationProvider
       {...eva}
-      theme={this.state.dark ? eva.dark : eva.light }><Button appearance="outline" style={{
+      theme={this.state.dark ? eva.dark : eva.light }>
+        <View style={{flexDirection: 'row'}}>
+          <EnIcon name="dots-three-horizontal" size={20} color="black" style={{marginTop: 10}} onPress={() => this.setState({moreOptions: true})} />
+          <Button appearance="outline" style={{
       marginHorizontal: 20, borderRadius: 30, width: "80%"}}
       onPress={() => this.follow(this.state.profileUser)}>
-        UnFollow</Button></ApplicationProvider>
+        UnFollow</Button>
+        </View></ApplicationProvider>
     }
   }else{
     return null
   }
+  }
+  reportUser(){
+    if(this.state.reportReason){
+    fetch('https://lishup.com/app/newUserReport.php', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user: this.state.user, reportedUser: this.state.profileUser, reason: this.state.reportReason}),
+    })
+    .catch((error) => {
+      console.log(error)
+      ToastAndroid.show('Something went wrong. Retry later', ToastAndroid.SHORT)
+    })
+    ToastAndroid.show('Reported Successfully', ToastAndroid.SHORT)
+    }else{
+      Alert.alert('Be specific', 'Please explain what is wrong, this will help us to take effective actions faster')
+    }
   }
   showCase(){
     if(this.state.showContent == 'posts'){
@@ -3213,7 +3894,9 @@ class Profile extends React.Component{
              <View style={{width: Dimensions.get('window').width / 2, alignContent: 'center', marginVertical: 10}}>
                 <FastImage source={require('./GemsIcons/1.png')} style={{height: 100, width: 100, alignSelf: 'center'}} resizeMode="contain"/>
                 <Text category="s1" style={{textAlign: 'center', marginTop: 5}}>Gems Bundle</Text>
-                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>100 <Icon name="diamond" color="#F10065" size={20} /></Text>
+                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>100 <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Text>
                 <Button onPress={() => {
                 try {
                   RNIap.requestPurchase(this.state.productList[2].productId)
@@ -3226,7 +3909,9 @@ class Profile extends React.Component{
             <View style={{width: Dimensions.get('window').width / 2, alignContent: 'center', marginVertical: 10}}>
                 <FastImage source={require('./GemsIcons/2.png')} style={{height: 100, width: 100, alignSelf: 'center'}} resizeMode="contain"/>
                 <Text category="s1" style={{textAlign: 'center', marginTop: 5}}>Gems Piggy Bank</Text>
-                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>300 <Icon name="diamond" color="#F10065" size={20} /></Text>
+                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>300 <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Text>
                 <Button onPress={() => {
                 try {
                   RNIap.requestPurchase(this.state.productList[1].productId)
@@ -3239,7 +3924,9 @@ class Profile extends React.Component{
             <View style={{width: Dimensions.get('window').width / 2, alignContent: 'center', marginVertical: 10}}>
                 <FastImage source={require('./GemsIcons/3.png')} style={{height: 100, width: 100, alignSelf: 'center'}} resizeMode="contain"/>
                 <Text category="s1" style={{textAlign: 'center', marginTop: 5}}>Gems Box</Text>
-                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>500 <Icon name="diamond" color="#F10065" size={20} /></Text>
+                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>500 <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Text>
                 <Button onPress={() => {
                 try {
                   RNIap.requestPurchase(this.state.productList[3].productId)
@@ -3252,7 +3939,9 @@ class Profile extends React.Component{
             <View style={{width: Dimensions.get('window').width / 2, alignContent: 'center', marginVertical: 10}}>
                 <FastImage source={require('./GemsIcons/5.png')} style={{height: 100, width: 100, alignSelf: 'center'}} resizeMode="contain"/>
                 <Text category="s1" style={{textAlign: 'center', marginTop: 5}}>Gems Palace</Text>
-                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>1K <Icon name="diamond" color="#F10065" size={20} /></Text>
+                <Text category="h5" style={{textAlign: 'center', marginBottom: 5}}>1K <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Text>
                 <Button onPress={() => {
                 try {
                   RNIap.requestPurchase(this.state.productList[0].productId)
@@ -3367,9 +4056,12 @@ class Profile extends React.Component{
    m(n,d){
     var x
     var p
-    x=(''+n).length,p=Math.pow,d=p(10,d)
+    x=(''+n).length,
+    p=Math.pow,
+    d=p(10,d)
     x-=x%3
-    return Math.round(n*d/p(10,x))/d+" kMGTPE"[x/3]}
+    return Math.round(n*d/p(10,x))/d+" kMGTPE"[x/4]
+  }
   render(){
     if(this.state.loading){
       return(
@@ -3414,20 +4106,25 @@ class Profile extends React.Component{
                 >{this.state.data.description}</Text>
               </View>     
                   <View style={{  justifyContent: 'center', alignContent: 'center', width: "40%", paddingTop: 20, paddingLeft: 10}}>
-                    <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
-                      <Text category="h5">{this.m(this.state.data.follows, 2)}</Text>
+                    <TouchableOpacity style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}
+                    onPress={() => this.fetchFollows('following')}>
+                      <Text category="h5">{this.m(this.state.data.follows, 3)}</Text>
                       <Text category="s2" appearance="hint">Following</Text>
-                    </View>
-                    <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
-                      <Text category="h5">{this.m(this.state.data.followers, 2)}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}
+                    onPress={() => this.fetchFollows('follower')}>
+                      <Text category="h5">{this.m(this.state.data.followers, 3)}</Text>
                       <Text category="s2" appearance="hint">Followers</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
                       <Text category="h5">{this.m(this.state.data.posts, 2)}</Text>
                       <Text category="s2" appearance="hint">Loves</Text>
                     </View>
                     <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
-                        <Text category="h5">{this.m(this.state.data.points, 2)} <Icon color="#F10065" name="diamond" size={20} style={{marginHorizontal: 10}}/></Text>
+                        <Text category="h5">{this.m(this.state.data.points, 3)} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                        style={{marginHorizontal: 10}}>
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Text>
                         <Text category="s2" appearance="hint">Gems</Text>
                     </View>
                     {this.me()}
@@ -3436,10 +4133,10 @@ class Profile extends React.Component{
             <View style={{flexDirection: 'row', backgroundColor: 'transparent', borderTopColor: '#ababab', justifyContent: 'space-evenly',
                borderTopWidth: 1, borderBottomWidth: 1, padding: 10, marginVertical: 20, borderBottomColor: '#ababab'}}>
               {this.state.profileUser == this.state.user ? <TouchableOpacity onPress={() => this.setState({showContent: 'store'})}>
-                <Icon name="store" color= { this.state.dark ? '#fff' : '#424E60' } style={{opacity: this.getShowCase('store')}} size={35} />
+                <EnIcon name="shopping-cart" color= { this.state.dark ? '#fff' : '#424E60' } style={{opacity: this.getShowCase('store')}} size={35} />
               </TouchableOpacity> : null }
               <TouchableOpacity onPress={() => this.setState({showContent: 'posts'})}>
-                <Icon name="grid-large" color= { this.state.dark ? '#fff' : '#424E60' } style={{opacity: this.getShowCase('posts')}} size={35} />
+                <Icon name="grid" color= { this.state.dark ? '#fff' : '#424E60' } style={{opacity: this.getShowCase('posts')}} size={35} />
               </TouchableOpacity>
               {this.state.profileUser == this.state.user ? <TouchableOpacity onPress={() => this.setState({showContent: 'bookmarks'})}>         
                  <Icon name="bookmark" color= { this.state.dark ? '#fff' : '#424E60' } style={{opacity: this.getShowCase('bookmarks')}} size={35} />
@@ -3459,6 +4156,29 @@ class Profile extends React.Component{
           </Layout>
           </Overlay>
 
+          <Overlay isVisible={this.state.moreOptions} onBackdropPress={() => this.setState({moreOptions: !this.state.moreOptions})}
+         overlayStyle={{width: "80%", height: 200, backgroundColor: this.state.dark ? '#101426' : '#fff', padding: 20,
+         borderRadius: 20 }}  animationType="slide">
+          <Layout style={{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-evenly'}}>
+           <TouchableOpacity
+             onPress={() => this.setState({moreOptions: false, reportUser: true})}><Icon name="alert-circle" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
+          <TouchableOpacity 
+              onPress={() => {  Clipboard.setString('lishup://meme/profile?user=' + this.state.profileUser)
+              ToastAndroid.show('Copied Profile Link', ToastAndroid.SHORT)
+              }}><Icon name="copy" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
+          </Layout>
+          </Overlay>
+
+          <Overlay isVisible={this.state.reportUser} onBackdropPress={() => this.setState({reportUser: !this.state.reportUser})}
+         overlayStyle={{width: "80%",  height: "50%", borderRadius: 50, backgroundColor: this.state.dark ? '#101426' : '#fff', paddingHorizontal: 30 }}  animationType="fade">
+          <Layout level="4" style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: this.state.dark ? '#101426' : '#fff'}}>
+           <Input placeholder="Let us know what is wrong" maxLength={100} textStyle={{minHeight: 60}}
+           multiline={true}  onChangeText={val => this.setState({reportReason: val})} />
+           <Button status="danger" style={{margin: 10, alignSelf: 'flex-end'}}
+           onPress={() => this.reportUser()}>Report</Button>
+          </Layout>
+          </Overlay>
+
           <Overlay isVisible={this.state.previewFlair} onBackdropPress={() => this.setState({previewFlair: !this.state.previewFlair})}
          overlayStyle={{width: "80%", height: "60%", backgroundColor: 'transparent', elevation: 0, zIndex: 30 }}  animationType="slide">
              <Carousel
@@ -3470,6 +4190,44 @@ class Profile extends React.Component{
               itemWidth={(Dimensions.get('window').width * 80) / 100}
               firstItem={this.state.previewIndex}
             />
+          </Overlay>
+          <Overlay isVisible={this.state.follows} onBackdropPress={() => this.setState({follows: !this.state.follows})}
+         overlayStyle={{width: "100%", height: "90%", backgroundColor: 'rgba(0, 0, 0, 0.9)', bottom: 0, position: 'absolute', padding: 20,
+          borderTopLeftRadius: 10, borderTopRightRadius: 10, alignContent: 'center', alignItems: 'center'}}  
+         backdropStyle={{opacity: 0.5}} animationType="slide">
+           <Avatar style={{alignSelf: 'center', width: 50, height: 50}} source={{uri: this.state.data.pic}} />
+           <Icon name="close" color="white" size={30} style={{position: 'absolute', alignSelf: 'flex-end', top: 30, right: 30}}
+             onPress={() => this.setState({follows: false})} />
+           <View style={{flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20}}>
+             <Text style={{color: 'white', margin: 10,fontWeight: 'bold',
+               opacity: this.state.followtype == 'following' ? 1 : 0.6}} 
+               onPress={() => this.fetchFollows('following')}>Following {this.m(this.state.data.follows, 3)}</Text>
+             <Text style={{color: 'white', margin: 10,fontWeight: 'bold',
+            opacity: this.state.followtype == 'follower' ? 1 : 0.6}}
+            onPress={() => this.fetchFollows('follower')}>Followers {this.m(this.state.data.followers, 3)}</Text>
+           </View>
+           <FlatList data={this.state.followData}
+           renderItem={({item, idx}) => (
+             <View style={{width: '90%', flexDirection: 'row', alignItems: 'center', marginVertical: 7}}>
+               <TouchableOpacity
+               onPress={() => {
+                this.fetch(item.user)
+                this.setState({follows: false, loading: true})
+              }}><Avatar style={{alignSelf: 'center', width: 50, height: 50, marginHorizontal: 5}} source={{uri:item.profile}} 
+                 /></TouchableOpacity>
+               <View>
+               <Text style={{color: 'white', fontWeight: 'bold', textAlign: 'left', maxWidth: '70%'}}
+               numberOfLines={1}>{item.fullName}</Text>
+               <Text style={{color: 'white', textAlign: 'left', opacity: 0.5, maxWidth: '70%'}}
+               numberOfLines={1}>@{item.user}</Text></View>
+              {item.user != this.state.user ?
+              <Button appearance="outline" style={{padding: 2, borderColor: 'white',
+                right: 0, alignSelf: 'flex-end'}} size="small" onPress={() => this.follow(item.user, 'list')}>
+                 {evaProps => <Text {...evaProps} style={{fontSize: 12, color: 'white'}}>
+                   {item.isfollowing > 0 ? 'Unfollow' : 'Follow'}</Text>}
+               </Button> : null}
+             </View>
+           )} />
           </Overlay>
 
           <Overlay isVisible={this.state.previewSunglass} onBackdropPress={() => this.setState({previewSunglass: !this.state.previewSunglass})}
@@ -3883,7 +4641,7 @@ return (
           }
         );
       }}>
-      <Icon name="sticker-emoji" size={28} style={styles.sendingContainer} />
+      <EnIcon name="emoji-happy" size={28} style={styles.sendingContainer} />
     </TouchableOpacity>
     </View>
     </View> 
@@ -4002,7 +4760,7 @@ return (
   function scrollToBottomComponent() {
     return (
       <View>
-        <Icon name='arrow-down' size={36} color='#000' />
+        <Icon name='arrow-down-circle' size={36} color='#000' />
       </View>
     );
   }
@@ -4105,7 +4863,7 @@ class Contests extends React.Component{
             description={evaProps => <Text category="s2" style={{color: 'white', marginHorizontal: 20}}>{item.prize} GEMS</Text>}
             accessoryRight={evaProps => 
         <View>
-           <Icon name="account-group" size={20} color="white" style={{marginRight: 10}} />
+           <EnIcon name="users" size={20} color="white" style={{marginRight: 10}} />
             <Text category="p1" style={{color: 'white'}}>{item.participants}</Text>
         </View>}
         accessoryLeft={evaProps => 
@@ -4641,7 +5399,7 @@ class Settings extends React.Component{
         <Divider />
         <ListItem 
           title="Replay Tutorial"
-          accessoryRight={props =>  <Icon name="timeline-help" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props =>  <Icon name="md-help-circle-outline" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { 
             this.seeTutorial() }} />
         <Divider />
@@ -4649,21 +5407,21 @@ class Settings extends React.Component{
         <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>Account Settings</Text>} />
           <ListItem 
           title="Edit Details"
-          accessoryRight={props => <Icon name="chevron-right" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <Icon name="chevron-forward" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { 
             this.fetchDetails()
             this.setState({editModal: true}) }} />
         <Divider /> 
         <ListItem 
           title="Change Profile Photo"
-          accessoryRight={props => <Icon name="chevron-right" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <Icon name="chevron-forward" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { this.setState({changePhoto: true}) 
           this.fetchDetails() }} />
         <Divider />
         <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>App Settings</Text>} />
         <ListItem 
           title="Push Notifications"
-          accessoryRight={props => <Icon name="bell" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <EnIcon name="bell" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openSettings()  } />
         <Divider />  
         <ListItem 
@@ -4687,22 +5445,22 @@ class Settings extends React.Component{
         <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>Privacy</Text>} />
         <ListItem 
           title="Terms and Conditions"
-          accessoryRight={props => <Icon name="security" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <Icon name="shield-checkmark" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openURL('https://lishup.com/guides.php?id=31')  } />
         <Divider />  
         <ListItem 
           title="Privacy Policy"
-          accessoryRight={props => <Icon name="security" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <Icon name="shield-checkmark" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openURL('https://lishup.com/guides.php?id=30')  } />  
         <Divider />  
         <ListItem 
           title="Contact Us"
-          accessoryRight={props => <Icon name="help-circle" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
+          accessoryRight={props => <Icon name="ios-help-circle" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openURL('mailto:support@lishup.com')  } />  
         <Divider />  
         <ListItem 
           title="Logout"
-          accessoryRight={props => <Icon name="logout-variant" size={30} color={this.state.dark ? '#fff' : 'red'}/>} 
+          accessoryRight={props => <Icon name="exit-outline" size={30} color={this.state.dark ? '#fff' : 'red'}/>} 
           onPress={() => this.logout()  } />   
            
           

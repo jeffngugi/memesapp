@@ -85,7 +85,7 @@ project.ext.react = [
 apply from: "../../node_modules/react-native/react.gradle"
 
 project.ext.vectoricons = [
-    iconFontNames: [ 'MaterialCommunityIcons.ttf' ] // Name of the font files you want to copy
+    iconFontNames: [ 'Ionicons.ttf', 'Entypo.ttf' ] // Name of the font files you want to copy
 ]
 
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
@@ -139,8 +139,8 @@ android {
         applicationId "com.meme.lishup"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
-        versionName "1.1.3.0"
+        versionCode 16
+        versionName "1.1.3.2"
         renderscriptSupportModeEnabled true
         multiDexEnabled true
     }
