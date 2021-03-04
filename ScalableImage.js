@@ -7,8 +7,8 @@ import PropTypes from 'prop-types'
         state = {}
 
         componentDidMount() {
-            const { uri, width, height } = this.props;
-            this.setState({ source: { uri }, width: width || height, height: height || width });
+            const { uri, width, height, source } = this.props;
+            this.setState({ source: source, width: width || height, height: height || width });
         }
 
         render() {
@@ -32,8 +32,8 @@ import PropTypes from 'prop-types'
                         }
 
                     }}
-                    style={{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,  borderRadius: 20, marginVertical: 10, resizeMode:"contain",
-                        alignSelf: 'center' }}
+                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,  borderRadius: 20, marginVertical: 10, resizeMode:"contain",
+                        alignSelf: 'center' }, this.props.style]}
                     onPress={this.props.onPress}
                     onLongPress={this.props.onLongPress}
                 />
@@ -43,7 +43,8 @@ import PropTypes from 'prop-types'
     }
 
     ScaledImage.propTypes = {
-        uri: PropTypes.string.isRequired,
+        uri: PropTypes.string,
+        require: PropTypes.string,
         width: PropTypes.number,
         height: PropTypes.number,
         onPress: PropTypes.func,

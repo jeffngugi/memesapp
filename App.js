@@ -6,24 +6,25 @@ import {
   ToastAndroid,
   View,
   StatusBar,
-  TouchableOpacity,
+  TouchableOpacity, TouchableWithoutFeedback,
   ActivityIndicator,
   Dimensions,
   Modal,
   FlatList,
   Alert,
   Clipboard,
-  Easing, Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText, 
-  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker
+  Easing, Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText,
+  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker, Switch
 } from 'react-native'
+import NetInfo from '@react-native-community/netinfo'
 import 'react-native-gesture-handler'
 import { createAppContainer, StackActions, StackNavigator, NavigationActions } from 'react-navigation'
 import { createStackNavigator } from 'react-navigation-stack'
 import { createBottomTabNavigator } from 'react-navigation-tabs'
 
 import * as eva from '@eva-design/eva'
-import { ApplicationProvider, Layout, Text, Button, ButtonGroup,
-   Input, Avatar, List, ListItem, Toggle } from '@ui-kitten/components'
+import { ApplicationProvider, Layout, Button, ButtonGroup,
+   Input, Avatar, List, ListItem, Toggle, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components'
 import {Card, Divider, Overlay, ListItem as ElementList} from 'react-native-elements'  
 import Icon from 'react-native-vector-icons/Ionicons'
 import Carousel, {ParallaxImage} from 'react-native-snap-carousel'
@@ -79,7 +80,8 @@ import InAppReview from 'react-native-in-app-review'
 import RNRestart from 'react-native-restart'
 import messaging from '@react-native-firebase/messaging'
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent'
-
+import {PowerTranslator, ProviderTypes, TranslatorConfiguration} from 'react-native-power-translator'
+import SwitchWithIcons from "react-native-switch-with-icons"
 
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
 const itemSkus = Platform.select({
@@ -155,6 +157,8 @@ const slides = [
     colors: ['#fc4a1a', '#f7b733'],
   },
 ]
+
+
 
 class Authentication extends React.Component{
   static navigationOptions = ({navigation}) => {
@@ -260,14 +264,16 @@ class Authentication extends React.Component{
   fetchUser = async() => {
     try {
       var user = await AsyncStorage.getItem('user')
-      var style = await AsyncStorage.getItem('style')
+      var lan = await AsyncStorage.getItem('language')
+      var lans = await AsyncStorage.getItem('languages')
+      console.log(lans)
       console.log(user)
       if(user !== null) {
         this.setState({user: user})
         ToastAndroid.show( 'Logged in as ' + user, ToastAndroid.SHORT)
         this.props.navigation.navigate('Home', {
           user: user,
-          feedStyle: style,
+          language: lan ? lan : 'en',
           dark: this.state.dark ? 'true' : 'false'
         })
       }else{
@@ -919,7 +925,6 @@ class Authentication extends React.Component{
                 })
                   .then((response) => response.json())
                   .then((responseJson) => {
-                    console.log(responseJson)
                       if(responseJson == 'register'){
                         this.setState({screen: 'register1'})
                     }else{
@@ -938,7 +943,7 @@ class Authentication extends React.Component{
   }
 }
 }
-class HomeScreen extends React.Component{
+class HomeScreen extends React.PureComponent{
   static navigationOptions = ({navigation}) => {
     const { params = {} } = navigation.state
     return {
@@ -966,10 +971,15 @@ class HomeScreen extends React.Component{
       sharePost: [],
       awardAmount: 0,
       showCongrats: false,
-      feedOrder: 'myFeed',
+      feedOrder: 'date_time',
       vertical: true,
       currentPostAuthor: '',
-      helpUser: false
+      helpUser: false,
+      count: 0,
+      moreLoading: false,
+      loves: [],
+      language: 'en',
+      isOffline: false
     }
     this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
     this.socket.on('connect', function (data) {
@@ -980,7 +990,7 @@ class HomeScreen extends React.Component{
     const { params } = this.props.navigation.state
     const user = params ? params.user : null
     const isnew = params ? params.newMeme : null
-    const feedStyle = params ? params.feedStyle : null
+    const lan = params ? params.language : null
     const theme = params ? params.dark : null
 
     messaging()
@@ -1019,19 +1029,18 @@ class HomeScreen extends React.Component{
           })
         }
       })  
-
-    if(feedStyle == 'true'){
-      this.setState({vertical: false})
-    }
+     
     if(theme == 'true'){
       this.setState({dark: true})
     }
-    this.setState({user: user})
-    this.fetch(user, 'myFeed')
-
+    this.setState({user: user, language: lan ? lan : 'en'})
+    this.fetch(user, 'date_time')
+      
     if(isnew){
       this.fetch()
     }
+    TranslatorConfiguration.setConfig(ProviderTypes.Google, 'AIzaSyBu1Mz7yL95Y1G0tUn_jtdc2GTuJQY7zto', lan ? lan : 'en')
+    
 
     this.socket.on('newComment', data => {
 
@@ -1048,10 +1057,7 @@ class HomeScreen extends React.Component{
       if(this.state.showComments){
       if(this.state.currentPostId == data.id){
         let newcomment = {id: data.id, user: data.user, text: data.text, time: data.time, image: data.url}
-        let posts = this.state.comments.concat(newcomment)
-
-        console.log(posts)
-        this.setState({ comments: posts  });
+        this.setState({ comments: [newcomment, ...this.state.comments]  })
       }
     }
   })
@@ -1063,36 +1069,12 @@ class HomeScreen extends React.Component{
     return true
   })
   this.fetchFirstTime()
-
-  Linking.getInitialURL().then((url) => {
-    Linking.addEventListener('url', url => {
-      console.log(url)
-    })
-    if (url) {
-      console.log('shared string/text is ', url)
-      if(url.substr(0, 27) == "lishup://meme/profile?user="){
-      this.props.navigation.navigate('Profile', {
-        user: url.substr(27, url.length),
-        dark: this.state.dark
-      })
-    }
-    }
-  }).catch(err => console.error('An error occurred', err))
-  ReceiveSharingIntent.getReceivedFiles(files => {
-    console.log(files)
-    if(files[0].contentUri){
-      this.props.navigation.navigate('Create', {
-        user: this.state.user,
-        dark: this.state.dark,
-        mixContent: files[0].contentUri
-      })
-    }
-  }, 
-  (error) =>{
-    console.log(error);
+  this.checkReceivedContent()
+  NetInfo.fetch().then(state => {
+    this.setState({isOffline: !state.isInternetReachable})
   })
-  ReceiveSharingIntent.clearReceivedFiles()
 }
+
   componentWillUnmount(){
     Linking.removeEventListener('url', url => {
       console.log(url)
@@ -1116,6 +1098,36 @@ class HomeScreen extends React.Component{
       ToastAndroid.show('Having hard time to help you to get started', ToastAndroid.SHORT)
     }
   }
+  checkReceivedContent(){
+    Linking.getInitialURL().then((url) => {
+      Linking.addEventListener('url', url => {
+        console.log(url)
+      })
+      if (url) {
+        console.log('shared string/text is ', url)
+        if(url.substr(0, 27) == "lishup://meme/profile?user="){
+        this.props.navigation.navigate('Profile', {
+          user: url.substr(27, url.length),
+          dark: this.state.dark
+        })
+      }
+      }
+    }).catch(err => console.error('An error occurred', err))
+    ReceiveSharingIntent.getReceivedFiles(files => {
+      console.log(files)
+      if(files[0].contentUri){
+        this.props.navigation.navigate('Create', {
+          user: this.state.user,
+          dark: this.state.dark,
+          mixContent: files[0].contentUri
+        })
+      }
+    }, 
+    (error) =>{
+      console.log(error);
+    })
+    ReceiveSharingIntent.clearReceivedFiles()
+  }
   fetch(user, changeFeed){
     if(changeFeed){
       this.setState({feedOrder: changeFeed})
@@ -1134,9 +1146,10 @@ class HomeScreen extends React.Component{
       })
       .then((response) => response.json())
       .then((responseJson) => {
+        this.seperateLoves(responseJson)
          this.setState({
             data: responseJson,
-            loading: false
+            loading: false,
          })
          Promise.all(
           responseJson.map(({ images }) => this.fetchImage(images))
@@ -1145,7 +1158,7 @@ class HomeScreen extends React.Component{
       })
       .catch((error) => {
          console.log(error)
-      });
+      })
   }
   fetchImage(image) {
     return fetch('https://lishup.com/app/fetch-image.php', {
@@ -1180,6 +1193,13 @@ class HomeScreen extends React.Component{
         }
       })
   }
+  seperateLoves(data){
+    var newArray = []
+    for(var i in data){
+      newArray = [...newArray, {id: data[i].id, isliked: data[i].isliked, loves: data[i].loves}]
+    }
+    this.setState({loves: newArray})
+  }
   award(){
     if(this.state.awardAmount < 2){
       Alert.alert('Uh!', 'The minimum amount is 2 Gems')
@@ -1194,7 +1214,6 @@ class HomeScreen extends React.Component{
       })
       .then((response) => response.json())
       .then((responseJson) => {
-        console.log(responseJson)
         if(responseJson == 'sent'){
           Vibration.vibrate()
           this.setState({showCongrats: true})
@@ -1254,31 +1273,32 @@ class HomeScreen extends React.Component{
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
         return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')}>
-          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}>
-            {v}</Text>
+          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}
+            >{v}</Text>
             </TouchableOpacity>
       }   else{
-        return <Text key={i} style={{ elevation: 5, zIndex: 5, color: this.state.dark ? "white" : 'black'}}>{v}</Text>
+        return this.state.language == 'en' ? <Text style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}>{v}</Text> : 
+        <PowerTranslator text={v} key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}} target={this.state.language} />
       }
     })
   }
   formatMention(string){
     return string.split(/((?:^|\s)(?:@[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('@')){
-        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', { 
-          user: v.substring(2),
-          dark: this.state.dark
-          }) }>
-          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, }}>
-            {v}</Text>
-            </TouchableOpacity>
-      }   else{
-        return <Text key={i} style={{ elevation: 5, zIndex: 5}}>{v}</Text>
+        return <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, }} onPress={() => this.props.navigation.navigate('Profile', { 
+            user: v.substring(2),
+            dark: this.state.dark
+            }) }>
+          {v}</Text>
+      }else{
+  
+        return this.state.language == 'en' ? <Text style={{elevation: 6, zIndex: 6}}>{v}</Text> :
+        <PowerTranslator text={v} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black'}} target={this.state.language} />
       }
     })
   }
   renderPosts = ({item, index}) => (
-    <Layout style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0}} level="2" key={index}>
+    <View style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0, backgroundColor: 'transparent'}} key={index}>
        <View style={{position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 5, zIndex: 5 }}>
         
         </View>
@@ -1286,7 +1306,9 @@ class HomeScreen extends React.Component{
         <View>
           <ListItem
             title={props => <Text style={{ fontSize:18, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : 'black'}}>
-            {item.user}  <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>{item.time}</Text>
+            {item.user}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
+              {item.time}</Text> : <PowerTranslator text={item.time} 
+            style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}} target={this.state.language}/>}
             </Text>}
             accessoryLeft={evaProps => 
               <Avatar size='giant' source={{uri: item.userpic}}/>}
@@ -1304,38 +1326,53 @@ class HomeScreen extends React.Component{
           />
         </View>
         <View style={{ width: '90%', alignSelf: 'center', marginBottom: 10}}>
-          {this.formatText(item.text)}
+          <Text>{this.formatText(item.text)}</Text>
         </View>
         <View style={{ borderRadius: 5, padding: 0}}>
-        {this.state.imageUrls[index] && this.state.imageUrls[index].length
+        {item.remixUri ? 
+        this.state.imageUrls[index] && this.state.imageUrls[index].length
+          ? this.state.imageUrls[index].map((uri) => (
+        <Carousel
+              data={[
+                {uri: item.remixUri, id: item.id},
+                {uri: uri, id: item.id},
+              ]}
+              renderItem={({item, idx}) => (
+                <TouchableWithoutFeedback onPress={() => 
+                  this.props.navigation.navigate('ViewPost', {id: parseInt(item.id), dark: this.state.dark })}>
+                  <NativeImage
+                  source={{uri: item.uri}}
+                  style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, marginLeft: '2.5%'}}
+                  loadingIndicatorSource={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}}
+                /></TouchableWithoutFeedback>
+              )}
+              sliderWidth={Dimensions.get('window').width}
+              itemWidth={Dimensions.get('screen').width}
+              layout={'stack'} layoutCardOffset={`18`}
+              firstItem={1}
+              inactiveSlideOpacity={1}
+            />
+          )) : null
+        :
+        this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
             <Image
               source={{uri: uri}}
-              style={{width: '95%', height: (Dimensions.get('window').width * 90) / 100, alignSelf: 'center',
+              style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, alignSelf: 'center',
                marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
-               containerStyle={{borderRadius: 10,
-                elevation: 3}}
+               containerStyle={{borderRadius: 10}}
               onPress={() => this.props.navigation.navigate('ViewPost', {id: item.id, dark: this.state.dark })}
               PlaceholderContent={<FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />}
              />
             ))
-          : <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />}
+          : <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />
+
+         }  
         <Input placeholder="Type a Comment..." style={{
            backgroundColor: this.state.dark ? '#393939' : 'white', borderWidth: 0, borderColor: 'transparent', borderRadius: 0, width: '95%', marginBottom: 0,
             alignSelf: 'center', borderBottomEndRadius: 10, borderBottomStartRadius: 10, elevation: 2
            }} textStyle={{color: this.state.dark ?'white' : '#ababab'}} placeholderTextColor={this.state.dark ?'white' : '#ababab'} size="large" value={this.state.newcomment}
-           accessoryRight={props =>  this.state.newcomment ? <TouchableOpacity onPress={() => {
-            if(this.state.newcomment){
-              this.socket.emit('newComment', {
-                lid: item.id,
-                user: this.state.user,
-                text: this.state.newcomment,
-                url: '',
-                to: item.user
-              })
-              this.setState({newcomment: ''})
-            }else { alert('Comment Field is Empty!') }
-           }}><Icon {...props}
+           accessoryRight={props =>  this.state.newcomment ? <TouchableOpacity onPress={() => this.newComment(item)}><Icon {...props}
             size={25}
             color={this.state.dark ?'white' : '#ababab'}
             name='ios-arrow-redo-circle-sharp'
@@ -1353,25 +1390,12 @@ class HomeScreen extends React.Component{
           onChangeText={val => this.setState({newcomment: val})} 
           value={this.state.newcomment} /></View>
        </View>
-       <View style={{flexDirection: 'row', bottom:"15%", left: 20}}>
-       <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} style={{alignSelf: 'flex-start'}}>
-        <Svg width="92" height="47" viewBox="0 0 92 47" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <G filter="url(#filter0_d)">
-          <Path d="M24 0C12.9714 0 4 8.97143 4 20C4 31.0286 12.9714 40 24 40C35.0286 40 44 31.0286 44 20C44 8.97143 35.0286 0 24 0Z" fill="white"/>
-          <Path d="M24 0C12.9714 0 4 8.97143 4 20C4 31.0286 12.9714 40 24 40C35.0286 40 44 31.0286 44 20C44 8.97143 35.0286 0 24 0Z" fill="#FF00A8"/>
-          <Path d="M23.9997 30.2858C23.0855 30.2858 22.3997 29.5429 22.3997 28.6858V11.3715C22.3997 10.4572 23.1426 9.77148 23.9997 9.77148C24.8569 9.77148 25.5997 10.5143 25.5997 11.3715V28.6858C25.5997 29.5429 24.914 30.2858 23.9997 30.2858Z" fill="black"/>
-          <Path d="M23.9997 30.2858C23.0855 30.2858 22.3997 29.5429 22.3997 28.6858V11.3715C22.3997 10.4572 23.1426 9.77148 23.9997 9.77148C24.8569 9.77148 25.5997 10.5143 25.5997 11.3715V28.6858C25.5997 29.5429 24.914 30.2858 23.9997 30.2858Z" fill="white"/>
-          <Path d="M32.6293 21.6001H15.3721C14.4578 21.6001 13.7721 20.8572 13.7721 20.0001C13.7721 19.1429 14.515 18.4001 15.3721 18.4001H32.6864C33.6007 18.4001 34.2864 19.1429 34.2864 20.0001C34.2864 20.8572 33.5436 21.6001 32.6293 21.6001Z" fill="black"/>
-          <Path d="M32.6293 21.6001H15.3721C14.4578 21.6001 13.7721 20.8572 13.7721 20.0001C13.7721 19.1429 14.515 18.4001 15.3721 18.4001H32.6864C33.6007 18.4001 34.2864 19.1429 34.2864 20.0001C34.2864 20.8572 33.5436 21.6001 32.6293 21.6001Z" fill="white"/>
-          <Path d="M64.3203 26H62.624L56.1816 16.1387V26H54.4854V13.2031H56.1816L62.6416 23.1084V13.2031H64.3203V26ZM71.0088 26.1758C69.7197 26.1758 68.6709 25.7539 67.8623 24.9102C67.0537 24.0605 66.6494 22.9268 66.6494 21.5088V21.21C66.6494 20.2666 66.8281 19.4258 67.1855 18.6875C67.5488 17.9434 68.0527 17.3633 68.6973 16.9473C69.3477 16.5254 70.0508 16.3145 70.8066 16.3145C72.043 16.3145 73.0039 16.7217 73.6895 17.5361C74.375 18.3506 74.7178 19.5166 74.7178 21.0342V21.7109H68.2754C68.2988 22.6484 68.5713 23.4072 69.0928 23.9873C69.6201 24.5615 70.2881 24.8486 71.0967 24.8486C71.6709 24.8486 72.1572 24.7314 72.5557 24.4971C72.9541 24.2627 73.3027 23.9521 73.6016 23.5654L74.5947 24.3389C73.7979 25.5635 72.6025 26.1758 71.0088 26.1758ZM70.8066 17.6504C70.1504 17.6504 69.5996 17.8906 69.1543 18.3711C68.709 18.8457 68.4336 19.5137 68.3281 20.375H73.0918V20.252C73.0449 19.4258 72.8223 18.7871 72.4238 18.3359C72.0254 17.8789 71.4863 17.6504 70.8066 17.6504ZM85.0273 23.7588L86.8555 16.4902H88.4814L85.7129 26H84.3945L82.083 18.793L79.833 26H78.5146L75.7549 16.4902H77.3721L79.2441 23.6094L81.459 16.4902H82.7686L85.0273 23.7588Z" fill={this.state.dark ? "white": 'black'}/>
-          </G>
-          </Svg>
-        </TouchableOpacity>
+       <View style={{flexDirection: 'row', bottom:"15%", left: 20, marginTop: 30}}>
        <Layout style={{ alignSelf: 'flex-end', flexDirection: 'row',
         backgroundColor: 'transparent', borderWidth: 0, position: 'absolute', right: '10%'}}>
         <TouchableOpacity style={{ borderColor: 'transparent', borderRadius: 30, marginHorizontal: 10}}
           onPress={() => this.lovePosts(item.id, item.user)}> 
-             {item.isliked ? <Svg width="35" height="31" viewBox="0 0 391.837 391.837" fill="none" xmlns="http://www.w3.org/2000/svg">
+             {this.state.loves[index].isliked ? <Svg width="35" height="31" viewBox="0 0 391.837 391.837" fill="none" xmlns="http://www.w3.org/2000/svg">
              <Path fill="#FF007A" d="M285.257,35.528c58.743,0.286,106.294,47.836,106.58,106.58
              c0,107.624-195.918,214.204-195.918,214.204S0,248.165,0,142.108c0-58.862,47.717-106.58,106.58-106.58l0,0
              c36.032-0.281,69.718,17.842,89.339,48.065C215.674,53.517,249.273,35.441,285.257,35.528z"/>
@@ -1383,7 +1407,7 @@ class HomeScreen extends React.Component{
                 <Path d="M17.3458 24.1968L17.5 24.3176L17.6542 24.1968L18.0876 23.8572L18.0876 23.8572C22.8312 20.1395 25.868 17.6095 27.7165 15.471C29.5785 13.3167 30.25 11.5419 30.25 9.34448C30.25 5.69908 27.1712 2.75 23.4067 2.75C20.4206 2.75 18.665 4.30564 17.5 5.54248C16.335 4.30564 14.5794 2.75 11.5933 2.75C7.82885 2.75 4.75 5.69908 4.75 9.34448C4.75 11.5419 5.4215 13.3167 7.28354 15.471C9.13199 17.6095 12.1688 20.1395 16.9124 23.8572L16.9124 23.8572L17.3458 24.1968ZM18.4743 7.21447L18.4743 7.21448L18.4756 7.21298C19.5795 6.00021 20.8891 4.57147 23.4067 4.57147C26.1558 4.57147 28.3767 6.72212 28.3767 9.34448C28.3767 11.0926 27.813 12.5568 26.154 14.4462C24.5028 16.3268 21.7855 18.6069 17.5 21.9769C13.2145 18.6069 10.4972 16.3268 8.84603 14.4462C7.18704 12.5568 6.6233 11.0926 6.6233 9.34448C6.6233 6.72212 8.84422 4.57147 11.5933 4.57147C14.1109 4.57147 15.4205 6.00021 16.5244 7.21298L16.5244 7.21298L16.5257 7.21447L17.3165 8.06916L17.5 8.26751L17.6835 8.06916L18.4743 7.21447Z" 
                 stroke="#FF007A" stroke-width="0.5"/> 
               </Svg>}
-          <Text style={{textAlign: 'center', color: this.state.dark ? "white" : 'black', }}>{item.loves}</Text>
+          <Text style={{textAlign: 'center', color: this.state.dark ? "white" : 'black', }}>{this.state.loves[index].loves}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10}}
         onPress={() => {
@@ -1419,7 +1443,7 @@ class HomeScreen extends React.Component{
         </TouchableOpacity>
         </Layout>
         </View>
-        </Layout>
+        </View>
   )
     renderComments = ({item, idx}) => (
       <View style={{flexDirection :'row', marginVertical: 10}} key={idx}>
@@ -1427,15 +1451,27 @@ class HomeScreen extends React.Component{
         ><Avatar size='small' style={{marginRight: 5}}
              source={{uri: item.userpic}} /></TouchableOpacity>
         <View>
-             <Text style={{fontWeight: 'bold', marginLeft : 5, marginBottom: 4}}>{item.user} | {item.time}</Text>
+             <Text style={{fontWeight: 'bold', marginLeft : 5, marginBottom: 4}}>{item.user} | {this.state.language == 'en' ? item.time : <PowerTranslator text={item.time} target={this.state.language}  />}</Text>
          {item.image ? <FastImage source={{uri: item.image}} style={{
           width: 100, height: 100}}/> : <View 
           style={{backgroundColor: this.state.dark ? '#151a30' : '#edf1f7', padding: 15, borderRadius: 20, maxWidth: '90%' }}>
-                <Text >{this.formatMention(item.text)}</Text>
+                <Text>{this.formatMention(item.text)}</Text>
            </View>}
          </View> 
       </View>
     )
+    newComment (item) {
+      this.setState({newcomment: ''})
+      if(this.state.newcomment){
+        this.socket.emit('newComment', {
+          lid: item.id,
+          user: this.state.user,
+          text: this.state.newcomment,
+          url: '',
+          to: item.user
+        })
+      }else { alert('Comment Field is Empty!') }
+     }
     Empty(){
       return (
             <Layout style={{justifyContent: 'center', flex: 1}}>
@@ -1460,7 +1496,7 @@ class HomeScreen extends React.Component{
     }
     lovePosts(id, author){
       this.setState((state) => {
-        const data = state.data.map((el) => {
+        const loves = state.loves.map((el) => {
           if (el.id === id) {
             if (el.isliked == true) {
               el.loves = parseInt(el.loves) - 1
@@ -1468,16 +1504,13 @@ class HomeScreen extends React.Component{
             } else {
               el.loves = parseInt(el.loves) + 1
               el.isliked = !el.isliked
-              this.setState({showLoves: true})
-              setTimeout(() => {this.setState({showLoves: false})}, 2000)
             }
           }
           return el
         });
         const isPress = !state.isPress
-        return { data, isPress }
-      });
-
+        return { loves, isPress }
+      })
       fetch('https://lishup.com/app/love.php', {
         method: 'POST',
         headers: {
@@ -1497,8 +1530,6 @@ class HomeScreen extends React.Component{
         return 'new-box'
       }else if(this.state.feedOrder == 'loved'){
         return 'ios-arrow-up-circle'
-      }else if(this.state.feedOrder == 'myFeed'){
-        return 'sticker-emoji'
       }
     }
     changeFeed(){
@@ -1506,20 +1537,41 @@ class HomeScreen extends React.Component{
         this.fetch(null, 'loved')
         ToastAndroid.show('Showing Top Memes', ToastAndroid.SHORT)
       }else if(this.state.feedOrder == 'loved'){
-        this.fetch(null, 'myFeed')
-        ToastAndroid.show('Showing Your own Feed', ToastAndroid.SHORT)
-      }else if(this.state.feedOrder == 'myFeed'){
         this.fetch(null, 'date_time')
         ToastAndroid.show('Showing the Latest Memes', ToastAndroid.SHORT)
       }
     }
 
     render(){
+    if(this.state.isOffline){
+      return (
+        <ScrollView contentContainerStyle={{justifyContent: 'center', alignItems: 'center', alignContent: 'center'}}
+         style={{flex: 1, backgroundColor: 'white'}}>
+          <ScaledImage source={require('./noCon.png')}
+           width={(Dimensions.get('window').width * 90) / 100}
+           style={{marginTop: 20}}
+           onPress={() => Linking.openURL('https://dribbble.com/shots/7063712-No-connection')}
+           />
+          <NativeText style={{fontSize: 35, textAlign: 'center', fontFamily: 'impact',
+             margin: 15}}>It seems you are not Online :(</NativeText>
+          <TouchableOpacity style={{backgroundColor: 'black', padding: 15, paddingHorizontal: 25}}>
+              <NativeText style={{color: 'white', fontSize: 20, fontFamily: 'impact', fontWeight: '100'}}>Reload</NativeText>
+          </TouchableOpacity>   
+
+        <View style={{height: 2, backgroundColor: 'black', opacity: 0.5, width: '80%', marginVertical: 30}} />
+        <TouchableOpacity style={{backgroundColor: 'yellow', padding: 15, paddingHorizontal: 25, borderColor: 'black', borderWidth: 2}}
+          onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})}>
+              <NativeText style={{color: 'black', fontSize: 20, fontFamily: 'impact', fontWeight: '100'}}>Create Meme Offline</NativeText>
+        </TouchableOpacity> 
+        </ScrollView>
+      )
+    }else{
     if(this.state.loading){
       return(
         <ApplicationProvider
     {...eva}
     theme={this.state.dark ? eva.dark : eva.light }>
+     
         <Layout level="2" style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <View style={{flexDirection:'row', zIndex: 20,
               justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, position: 'absolute', paddingRight: 15, paddingLeft: 15,
@@ -1530,13 +1582,7 @@ class HomeScreen extends React.Component{
              </Svg>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.changeFeed()} >
-             {this.state.feedOrder == 'myFeed' ? 
-             <Svg width="38" height="39" viewBox="0 0 38 39" fill="none" xmlns="http://www.w3.org/2000/svg">
-             <Path d="M26.9119 6.86136C27.8442 10.8911 30.9757 14.0565 35.0086 14.9906C31.0096 15.9232 27.8456 19.0549 26.9118 23.087C25.9791 19.0879 22.8474 15.924 18.8153 14.9902C22.8161 14.0559 25.9783 10.8921 26.9119 6.86136Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             <Path d="M21.1661 24.3088C18.2457 25.1412 15.9544 27.4325 15.122 30.3529C14.2896 27.4325 11.9982 25.1412 9.07783 24.3088C11.9987 23.4761 14.2897 21.1827 15.122 18.2371C15.9542 21.1827 18.2452 23.4761 21.1661 24.3088Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             <Path d="M16.9719 9.84639C14.0128 10.6322 11.5999 13.0125 10.8124 16.0055C9.99698 13.0173 7.61759 10.6335 4.655 9.84639C7.67798 9.03114 9.99916 6.67587 10.8124 3.6573C11.5977 6.68066 13.9524 9.03239 16.9719 9.84639Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             </Svg>
-             : this.state.feedOrder == 'date_time' ? 
+             {this.state.feedOrder == 'date_time' ? 
              <EnIcon name='new' size={35} color={this.state.dark ? "white" : "black"} /> :
              <Icon name='ios-arrow-up-circle' size={35} color={this.state.dark ? "white" : "black"} />}
             </TouchableOpacity>
@@ -1560,6 +1606,22 @@ class HomeScreen extends React.Component{
               </Svg>
             </TouchableOpacity>
         </View>
+        <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
+        style={{position: 'absolute', zIndex: 100, elevation: 100, bottom: 20, left: 20}}>
+        <Svg width="135" height="60" viewBox="0 0 135 63" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <G filter="url(#filter0_d)">
+          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="white"/>
+          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="#FF00A8"/>
+          <Rect x="4" width="127" height="56" rx="28" fill="#FF00A8"/>
+          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="black"/>
+          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="white"/>
+          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="black"/>
+          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="white"/>
+          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="black"/>
+          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="white"/>
+          </G>
+          </Svg>
+        </TouchableOpacity>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
           priority: FastImage.priority.high,}} style={{
             width: 100, height: 100
@@ -1581,13 +1643,7 @@ class HomeScreen extends React.Component{
              </Svg>
              </TouchableOpacity>
              <TouchableOpacity onPress={() => this.changeFeed()}>
-             {this.state.feedOrder == 'myFeed' ? 
-             <Svg width="38" height="39" viewBox="0 0 38 39" fill="none" xmlns="http://www.w3.org/2000/svg">
-             <Path d="M26.9119 6.86136C27.8442 10.8911 30.9757 14.0565 35.0086 14.9906C31.0096 15.9232 27.8456 19.0549 26.9118 23.087C25.9791 19.0879 22.8474 15.924 18.8153 14.9902C22.8161 14.0559 25.9783 10.8921 26.9119 6.86136Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             <Path d="M21.1661 24.3088C18.2457 25.1412 15.9544 27.4325 15.122 30.3529C14.2896 27.4325 11.9982 25.1412 9.07783 24.3088C11.9987 23.4761 14.2897 21.1827 15.122 18.2371C15.9542 21.1827 18.2452 23.4761 21.1661 24.3088Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             <Path d="M16.9719 9.84639C14.0128 10.6322 11.5999 13.0125 10.8124 16.0055C9.99698 13.0173 7.61759 10.6335 4.655 9.84639C7.67798 9.03114 9.99916 6.67587 10.8124 3.6573C11.5977 6.68066 13.9524 9.03239 16.9719 9.84639Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             </Svg>
-             : this.state.feedOrder == 'date_time' ? 
+             {this.state.feedOrder == 'date_time' ? 
              <EnIcon name='new' size={35} color={this.state.dark ? "white" : "black"} /> :
              <Icon name='ios-arrow-up-circle' size={35} color={this.state.dark ? "white" : "black"} />}
             </TouchableOpacity>
@@ -1621,16 +1677,17 @@ class HomeScreen extends React.Component{
         onDone={() => this.setState({helpUser: false})}
         bottomButton
       />  :     
-        <Carousel
+        <FlatList
               ref={(c) => { this._carousel = c; }}
               data={this.state.data}
               renderItem={this.renderPosts}
-              sliderWidth={Dimensions.get('window').width}
-              sliderHeight={Dimensions.get('window').height}
-              itemWidth={Dimensions.get('window').width}
-              itemHeight={Dimensions.get('window').height}
+              snapToAlignment={'center'}
+              snapToInterval={Dimensions.get('window').height}
+              decelerationRate={'normal'}
+              pagingEnabled
               extraData={this.state}
-              vertical={this.state.vertical}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
               refreshControl={<RefreshControl refreshing={this.state.loading} onRefresh={() => {
                   const { params } = this.props.navigation.state
                   const user = params ? params.user : null
@@ -1638,7 +1695,6 @@ class HomeScreen extends React.Component{
                   this.fetch(user, this.state.feedOrder)
                   this.setState({data: []})
                 } } />}
-              useScrollView={true}
             />}
             
         <Modal
@@ -1654,7 +1710,9 @@ class HomeScreen extends React.Component{
         <View style={{position: 'absolute', bottom: 0, width: Dimensions.get('window').width, height: "45%"}}>
           <Layout style={[styles.modalView, { justifyContent: 'center', alignItems: 'center',
            borderRadius: 0, backgroundColor: this.state.dark ? '#101426' : '#fff', width: "100%", height: "100%", border: 0, margin: 0 }]}>
-            <Text category="h6" style={{textAlign: 'center', marginVertical: 10}}>Award User</Text>
+            {this.state.language == 'en' ? <Text category="h6" style={{textAlign: 'center', marginVertical: 10}}>Award User</Text>
+            : <PowerTranslator text={'Award User'} style={{textAlign: 'center', marginVertical: 10, color: 
+            this.state.dark ? 'white' : 'black'}} target={this.state.language} />}
             <Divider />
             <ButtonGroup status="basic">
               <Button onPress={() => this.setState({awardAmount: 5})} style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}}><Text style={{fontWeight: 'bold', fontSize: 20}}>5</Text> 
@@ -1679,11 +1737,29 @@ class HomeScreen extends React.Component{
             <Button onPress={() => this.award()} style={{backgroundColor: '#F10063', borderRadius: 20, borderColor: 'white'}}>Award Gems</Button>     
           </Layout>
         </View>
-        </Modal>        
+        </Modal>   
+
+        <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
+        style={{position: 'absolute', zIndex: 100, elevation: 100, bottom: 20, left: 20}}>
+        <Svg width="135" height="60" viewBox="0 0 135 63" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <G filter="url(#filter0_d)">
+          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="white"/>
+          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="#FF00A8"/>
+          <Rect x="4" width="127" height="56" rx="28" fill="#FF00A8"/>
+          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="black"/>
+          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="white"/>
+          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="black"/>
+          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="white"/>
+          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="black"/>
+          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="white"/>
+          </G>
+          </Svg>
+        </TouchableOpacity>
+
         <Overlay
         animationType="slide"
         transparent={true}
-        visible={this.state.showComments}
+        isVisible={this.state.showComments}
         onDismiss={() => {
           this.setState({showComments: !this.state.showComments, comments: [], loadingComments: true})
         }}
@@ -1692,7 +1768,11 @@ class HomeScreen extends React.Component{
         }}
         overlayStyle={{...styles.modalView, backgroundColor: this.state.dark ? '#101426' : '#fff', width: "100%"}}
       >
-            <Text style={{fontWeight: 'bold', fontSize: 22, textAlign: 'center'}}>What do people say?</Text>
+             {this.state.language == 'en' ? <Text style={{fontWeight: 'bold', fontSize: 22, textAlign: 'center'}}>
+             Meme Discussions</Text> :<PowerTranslator text={'Meme Discussions'} style={{fontWeight: 'bold', fontSize: 22, textAlign: 'center',
+             color: 
+             this.state.dark ? 'white' : 'black'}} 
+              target={this.state.language} />}
             <Divider style={{marginVertical: 10}} />
             <FlatList
             data={this.state.comments}
@@ -1713,7 +1793,7 @@ class HomeScreen extends React.Component{
             <TouchableOpacity style={{ marginHorizontal: 7, marginVertical: 3 }} onPress={() => {
               GiphyUi.present(
                 {
-                  theme: 'light',
+                  theme: this.state.dark ? 'dark' : 'light',
                   layout: 'waterfall',
                   showConfirmationScreen: true,
                   mediaTypes: ['gifs', 'stickers', 'emoji', 'text'],
@@ -1746,10 +1826,6 @@ class HomeScreen extends React.Component{
           }}>Share</Button>
             </View>
       </Overlay>
-        {this.state.showLoves ? <FastImage source={{uri: 'https://media0.giphy.com/media/3oKIPqM8BJ0ofNQOzK/giphy.gif?cid=ecf05e47t2sbc7eivk8udcfb8szs557jx17bl9t3atewvoe4&rid=giphy.gif', 
-          priority: FastImage.priority.high,}} style={{
-            width:465, height: 465, position: 'absolute', bottom: 10, alignSelf: 'center'
-          }} /> : null}
           {this.state.showCongrats ? <FastImage source={{uri: 'https://media.giphy.com/media/58FB1ly2YjmVzcaOYv/giphy.gif', 
           priority: FastImage.priority.high}} style={{
             width:"100%", height: "100%", top: 0, position: 'absolute', alignSelf: 'center'
@@ -1759,6 +1835,7 @@ class HomeScreen extends React.Component{
       )
     }
   }
+}
 }
 class ViewPost extends React.Component{
 
@@ -1789,7 +1866,8 @@ class ViewPost extends React.Component{
       reportPost: false,
       reportReason: '',
       zoomImage: false,
-      zoomUri: ''
+      zoomUri: '',
+      language: 'en'
     }
     this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
     this.socket.on('connect', function (data) {
@@ -1810,10 +1888,7 @@ class ViewPost extends React.Component{
     this.socket.on('newComment', data => {
       if(id == data.id){
         let newcomment = {id: data.id, user: data.user, text: data.text, time: data.time, image: data.url}
-        let posts = this.state.comments.concat(newcomment)
-
-        console.log(posts)
-        this.setState({ comments: posts  });
+        this.setState({ comments: [newcomment, ...this.state.comments]  });
       }
   })
   BackHandler.addEventListener('hardwareBackPress', () => {
@@ -1830,8 +1905,9 @@ class ViewPost extends React.Component{
   fetchUser = async(id) => {
     try {
       var user = await AsyncStorage.getItem('user')
+      var lan = await AsyncStorage.getItem('language')
       if(user !== null) {
-        this.setState({user: user})
+        this.setState({user: user, language: lan ? lan : 'en'})
         this.fetch(id)
       }
     } catch(e) {
@@ -1934,15 +2010,15 @@ class ViewPost extends React.Component{
   formatMention(string){
     return string.split(/((?:^|\s)(?:@[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('@')){
-        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', { 
-          user: v.substring(2),
-          dark: this.state.dark
-          }) }>
-          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10}}>
-            {v}</Text>
-            </TouchableOpacity>
-      }   else{
-        return <Text key={i} style={{ elevation: 5, zIndex: 5}}>{v}</Text>
+        return <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, }} onPress={() => this.props.navigation.navigate('Profile', { 
+            user: v.substring(2),
+            dark: this.state.dark
+            }) }>
+          {v}</Text>
+      }else{
+  
+        return this.state.language == 'en' ? <Text style={{elevation: 6, zIndex: 6}}>{v}</Text> :
+        <PowerTranslator text={v} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black'}} target={this.state.language} />
       }
     })
   }
@@ -2018,54 +2094,116 @@ class ViewPost extends React.Component{
             {v}</Text>
             </TouchableOpacity>
       }   else{
-        return <Text key={i} style={{ elevation: 5, zIndex: 5}}>{v}</Text>
+        return this.state.language == 'en' ? <Text key={i} style={{ elevation: 5, zIndex: 5}}>{v}</Text> : 
+        <PowerTranslator text={v} target={this.state.language} style={{ elevation: 5, zIndex: 5}} />
       }
     })
   }
   renderPost = ({item, index}) => (
-    <Card containerStyle={{width: "90%", alignSelf: 'center', 
-         borderRadius: 30, borderWidth: 0, elevation: 0, backgroundColor: this.state.dark ? '#222B45' : '#ffffff' }}>
-        <ListItem
-          title={item.user}
-          description={item.time}
-          accessoryLeft={evaProps => 
-            <Avatar size='giant' source={{uri: item.userpic}}/>}
-          accessoryRight={evaProps => <TouchableOpacity>
-            <EnIcon
-            color={this.state.dark ? 'white' : 'black'}
-            size={30}
-            name='dots-three-horizontal'
-            onPress={() => this.setState({moreOptions: true})}
-          /></TouchableOpacity>}
-          onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
-        />
-        <View style={{alignSelf: 'center', width: '100%'}}>
-        {this.formatText(item.text)}
+    <View style={{flex: 1, width: "100%", margin: 0, padding: 0, backgroundColor: 'transparent'}} key={index}>
+        <View style={{width: '100%', marginTop: '5%', alignSelf: 'center', alignContent: 'center'}}>
+        <View>
+          <ListItem
+            title={props => <Text style={{ fontSize:18, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : 'black'}}>
+            {item.user}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
+              {item.time}</Text> : <PowerTranslator text={item.time} 
+            style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}} target={this.state.language}/>}
+            </Text>}
+            accessoryLeft={evaProps => 
+              <Avatar size='giant' source={{uri: item.userpic}}/>}
+              accessoryRight={evaProps => <View style={{flexDirection: 'row'}}>
+                <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10, alignItems: 'center'}}
+                onPress={() => this.setState({showAwards: true, currentAwardUser: item.user})}>
+               <Svg width="25" height="25" viewBox="0 0 39 39" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <G><Path 
+               d="M37.7 7.8H31.7759C32.2244 7.0317 32.5 6.1516 32.5 5.2C32.5 0.676 29.2422 0 27.3 0C24.973 0 21.4019 3.1317 19.5 5.9657C17.5981 3.1317 14.027 0 11.7 0C9.7578 0 6.5 0.676 6.5 5.2C6.5 6.1516 6.7756 7.0317 7.2241 7.8H1.3C0.5824 7.8 0 8.3824 0 9.1V16.9C0 17.6176 0.5824 18.2 1.3 18.2H2.6V37.7C2.6 38.4176 3.1824 39 3.9 39H35.1C35.8189 39 36.4 38.4176 36.4 37.7V18.2H37.7C38.4189 18.2 39 17.6176 39 16.9V9.1C39 8.3824 38.4189 7.8 37.7 7.8ZM27.3 2.6C29.4866 2.6 29.9 3.5139 29.9 5.2C29.9 6.6339 28.7339 7.8 27.3 7.8H21.3408C22.6278 5.759 25.8661 2.6 27.3 2.6ZM22.1 15.6H16.9V10.4H19.5H22.1V15.6ZM9.1 5.2C9.1 3.5139 9.5147 2.6 11.7 2.6C13.1339 2.6 16.3722 5.759 17.6579 7.8H11.7C10.2661 7.8 9.1 6.6339 9.1 5.2ZM2.6 10.4H14.3V15.6H2.6V10.4ZM5.2 18.2H14.3V36.4H5.2V18.2ZM16.9 36.4V18.2H22.1V36.4H16.9ZM33.8 36.4H24.7V18.2H33.8V36.4ZM36.4 15.6H24.7V10.4H36.4V15.6Z"
+               fill={this.state.dark ?'white' : 'black'}/></G>
+               </Svg>
+           </TouchableOpacity>
+           <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => this.setState({moreOptions: true})}>
+             <EnIcon name="dots-three-horizontal" size={33} color={this.state.dark ? 'white' : 'black'}/>
+           </TouchableOpacity></View>}
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
+            style={{backgroundColor: 'transparent', elevation: 5, zIndex: 5}}
+          />
         </View>
-
-        {this.state.imageUrls[index] && this.state.imageUrls[index].length
+        <View style={{ width: '90%', alignSelf: 'center', marginBottom: 10}}>
+          <Text>{this.formatText(item.text)}</Text>
+        </View>
+        <View style={{ borderRadius: 5, padding: 0}}>
+        {item.remixUri ? 
+        this.state.imageUrls[index] && this.state.imageUrls[index].length
+          ? this.state.imageUrls[index].map((uri) => (
+        <Carousel
+              data={[
+                {uri: item.remixUri},
+                {uri: uri},
+              ]}
+              renderItem={({item, idx}) => (
+                <TouchableWithoutFeedback onPress={() => 
+                  this.setState({zoomImage: true, zoomUri: item.uri})}>
+                  <NativeImage
+                  source={{uri: item.uri}}
+                  style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, marginLeft: '2.5%'}}
+                  loadingIndicatorSource={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}}
+                /></TouchableWithoutFeedback>
+              )}
+              sliderWidth={Dimensions.get('window').width}
+              itemWidth={Dimensions.get('screen').width}
+              layout={'stack'} layoutCardOffset={`18`}
+              firstItem={1}
+              inactiveSlideOpacity={1}
+            />
+          )) : null
+        :
+        this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
             <Image
               source={{uri: uri}}
-              style={{width: '95%', height: (Dimensions.get('window').width * 90) / 100, alignSelf: 'center',
-               marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
-               containerStyle={{borderRadius: 10}} resizeMode="contain"
+              style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, alignSelf: 'center',
+               marginBottom: 0, marginLeft: '2.5%', borderRadius: 10  }}
+               containerStyle={{borderRadius: 10}}
               onPress={() => this.setState({zoomImage: true, zoomUri: uri})}
               PlaceholderContent={<FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />}
              />
             ))
-          : <ScaledImage uri='https://dribbble.com/shots/3600670-Loading-gif' width={100} />}
+          : <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />
 
-        <Layout style={{ flexDirection:'row', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 0}}>
-        <Button style={{borderColor:'transparent', borderRadius: 20, backgroundColor: item.isliked ? '#f0184a' : 'transparent'}}
-          onPress={() => this.lovePosts(item.id, item.user)}>
-        <Icon
-          size={32}
-          color={item.isliked ? 'white' : this.state.dark ? 'white' : 'black'}
-          name='ios-heart'
-        /> <Text style={{color: item.isliked ? 'white' : this.state.dark ? 'white' : 'black', fontWeight: 'bold'}}>{item.loves}</Text>
-        </Button>
-        <Button style={{backgroundColor: 'transparent', borderColor: 'transparent'}}
+         }  
+        </View>
+       </View>
+       <View style={{ alignSelf: 'flex-end', flexDirection: 'row', borderWidth: 0, marginTop: 20}}>
+        <TouchableOpacity style={{ borderColor: 'transparent', borderRadius: 30, marginHorizontal: 10}}
+          onPress={() => this.lovePosts(item.id, item.user)}> 
+             {item.isliked ? <Svg width="35" height="31" viewBox="0 0 391.837 391.837" fill="none" xmlns="http://www.w3.org/2000/svg">
+             <Path fill="#FF007A" d="M285.257,35.528c58.743,0.286,106.294,47.836,106.58,106.58
+             c0,107.624-195.918,214.204-195.918,214.204S0,248.165,0,142.108c0-58.862,47.717-106.58,106.58-106.58l0,0
+             c36.032-0.281,69.718,17.842,89.339,48.065C215.674,53.517,249.273,35.441,285.257,35.528z"/>
+             </Svg> : 
+             <Svg width="40" height="40" viewBox="0 0 35 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="black"/>
+                <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="white" />
+                <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="#FF007A"/>
+                <Path d="M17.3458 24.1968L17.5 24.3176L17.6542 24.1968L18.0876 23.8572L18.0876 23.8572C22.8312 20.1395 25.868 17.6095 27.7165 15.471C29.5785 13.3167 30.25 11.5419 30.25 9.34448C30.25 5.69908 27.1712 2.75 23.4067 2.75C20.4206 2.75 18.665 4.30564 17.5 5.54248C16.335 4.30564 14.5794 2.75 11.5933 2.75C7.82885 2.75 4.75 5.69908 4.75 9.34448C4.75 11.5419 5.4215 13.3167 7.28354 15.471C9.13199 17.6095 12.1688 20.1395 16.9124 23.8572L16.9124 23.8572L17.3458 24.1968ZM18.4743 7.21447L18.4743 7.21448L18.4756 7.21298C19.5795 6.00021 20.8891 4.57147 23.4067 4.57147C26.1558 4.57147 28.3767 6.72212 28.3767 9.34448C28.3767 11.0926 27.813 12.5568 26.154 14.4462C24.5028 16.3268 21.7855 18.6069 17.5 21.9769C13.2145 18.6069 10.4972 16.3268 8.84603 14.4462C7.18704 12.5568 6.6233 11.0926 6.6233 9.34448C6.6233 6.72212 8.84422 4.57147 11.5933 4.57147C14.1109 4.57147 15.4205 6.00021 16.5244 7.21298L16.5244 7.21298L16.5257 7.21447L17.3165 8.06916L17.5 8.26751L17.6835 8.06916L18.4743 7.21447Z" 
+                stroke="#FF007A" stroke-width="0.5"/> 
+              </Svg>}
+          <Text style={{textAlign: 'center', color: this.state.dark ? "white" : 'black', }}>{item.loves}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10}}
+        onPress={() => {
+          this.state.imageUrls[index] && this.state.imageUrls[index].length
+          ? this.state.imageUrls[index].map((uri) => (
+            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark, user: this.state.user})
+          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
+        }}>
+           <Svg width="43" height="40" viewBox="0 0 33 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <G filter="url(#filter0_d)">
+            <Path fill-rule="evenodd" clip-rule="evenodd" d="M23.8796 8.62612L23.8187 8.62724C23.6728 8.63125 23.5277 8.64666 23.3844 8.67472C22.8885 8.77189 22.4301 9.00929 22.0163 9.29278C21.9374 9.34684 21.8598 9.40284 21.7835 9.46045C21.3394 9.79548 20.9355 10.1819 20.5543 10.586C20.0978 11.0701 19.6727 11.5831 19.2611 12.1056L18.6839 12.8614L18.4115 13.218C18.0089 13.7582 17.6105 14.3016 17.2086 14.8423C16.9081 15.2453 16.6056 15.6469 16.2959 16.0429L16.0514 16.3461L15.5807 16.9296C15.3977 17.1485 15.2115 17.3647 15.0212 17.5772C14.8732 17.7425 14.7227 17.9057 14.5693 18.066C13.6638 19.0127 12.6477 19.8768 11.4739 20.4725C11.3267 20.5472 11.1773 20.6174 11.0259 20.683C10.8263 20.7693 10.6231 20.8473 10.4169 20.9161C10.1419 21.0078 9.86138 21.0832 9.57723 21.1407C9.30377 21.1961 9.02698 21.2348 8.74882 21.2565C8.6074 21.2675 8.46577 21.2736 8.32396 21.2763C8.27244 21.2769 8.27255 21.277 8.22097 21.2772C8.22097 21.2772 5.76861 21.2772 4.60241 21.2772C4.44264 21.2772 4.28942 21.2137 4.17644 21.1007C4.06347 20.9877 4 20.8345 4 20.6747C4 19.8737 4 18.4658 4 17.6641C4 17.504 4.06371 17.3505 4.17706 17.2375C4.29042 17.1245 4.4441 17.0612 4.60417 17.0617C5.8307 17.0668 7.04957 17.0835 8.27887 17.0595C8.3197 17.0584 8.36045 17.0565 8.4012 17.0538C8.52206 17.0449 8.6421 17.0284 8.76072 17.0035C9.26512 16.8975 9.73031 16.6512 10.1505 16.359C10.2467 16.2921 10.341 16.2224 10.4335 16.1505C10.8813 15.8022 11.2892 15.4043 11.6747 14.9891C12.1325 14.496 12.5597 13.9752 12.974 13.4454L13.4202 12.8568L13.9338 12.1794C14.263 11.7348 14.5909 11.2892 14.9208 10.8451C15.2208 10.4425 15.5226 10.0413 15.8315 9.64545L16.0534 9.37059L16.6055 8.68658C16.7885 8.46849 16.9748 8.25315 17.1653 8.04155C17.3135 7.87699 17.4641 7.71467 17.6177 7.55516C18.5244 6.61328 19.5436 5.75586 20.721 5.17244C20.8687 5.09923 21.0186 5.0305 21.1707 4.96665C21.371 4.88248 21.575 4.8068 21.782 4.7405C22.0581 4.65208 22.3395 4.58034 22.6244 4.52675C23.037 4.44913 23.4556 4.41129 23.8754 4.40964H23.8796V2L29 6.51808L23.8796 11.0362V8.62613L23.8796 8.62612ZM23.8796 17.0603V14.6506L29.0001 19.1687L23.8796 23.6868V21.2772H23.8755C23.4548 21.2755 23.0354 21.2378 22.6219 21.1604C22.3363 21.107 22.0543 21.0354 21.7775 20.9472C21.57 20.881 21.3655 20.8055 21.1645 20.7215C21.0121 20.6577 20.8617 20.5891 20.7135 20.516C19.5612 19.9476 18.5588 19.1173 17.6656 18.2021C17.5107 18.0434 17.3588 17.8817 17.2095 17.7177L16.8367 17.2927L17.245 16.7851C17.5606 16.3815 17.8688 15.9724 18.175 15.5618C18.5412 15.0691 18.9046 14.5742 19.2707 14.0814L19.4513 13.8496C19.8504 14.3447 20.2523 14.8149 20.6837 15.257C21.0485 15.6309 21.4353 15.9868 21.8589 16.2935C22.3133 16.6226 22.822 16.9033 23.3778 17.0117C23.5365 17.0426 23.6974 17.0583 23.859 17.0602L23.8796 17.0603L23.8796 17.0603ZM12.653 11.8696L11.9073 10.9784C11.4749 10.4903 11.0173 10.0199 10.5093 9.6098C10.4164 9.53478 10.3217 9.46191 10.2251 9.39175C10.1494 9.33676 10.0724 9.28343 9.99415 9.23209C9.58736 8.96532 9.13797 8.74715 8.65522 8.66402C8.51709 8.64024 8.37748 8.62826 8.23736 8.62662L8.21277 8.62652C8.21277 8.62652 5.76683 8.62652 4.60244 8.62652C4.26974 8.62652 4.00003 8.35681 4.00003 8.02411C4.00003 7.22248 4.00003 5.81327 4.00003 5.01179C4.00003 4.67922 4.26953 4.40957 4.6021 4.40938C5.82485 4.40836 7.04761 4.40506 8.27035 4.40985C8.32368 4.41048 8.37695 4.41152 8.43026 4.41298C8.57133 4.41795 8.71217 4.4262 8.85273 4.43941C9.12919 4.46539 9.40401 4.50842 9.67525 4.56782C9.94069 4.62595 10.2027 4.69975 10.4597 4.78789C10.6646 4.85819 10.8665 4.93759 11.0647 5.02522C11.23 5.09834 11.3928 5.17717 11.5529 5.26117C12.6304 5.82646 13.573 6.61796 14.4186 7.48621C14.5731 7.64492 14.7247 7.80653 14.8737 7.97046L15.2689 8.42177L14.8818 8.9042C14.5671 9.30731 14.2597 9.71593 13.9542 10.1259C13.5886 10.6181 13.2257 11.1124 12.8599 11.6045L12.653 11.8696L12.653 11.8696Z" fill="white"/>
+            <Path fill-rule="evenodd" clip-rule="evenodd" d="M23.8796 8.62612L23.8187 8.62724C23.6728 8.63125 23.5277 8.64666 23.3844 8.67472C22.8885 8.77189 22.4301 9.00929 22.0163 9.29278C21.9374 9.34684 21.8598 9.40284 21.7835 9.46045C21.3394 9.79548 20.9355 10.1819 20.5543 10.586C20.0978 11.0701 19.6727 11.5831 19.2611 12.1056L18.6839 12.8614L18.4115 13.218C18.0089 13.7582 17.6105 14.3016 17.2086 14.8423C16.9081 15.2453 16.6056 15.6469 16.2959 16.0429L16.0514 16.3461L15.5807 16.9296C15.3977 17.1485 15.2115 17.3647 15.0212 17.5772C14.8732 17.7425 14.7227 17.9057 14.5693 18.066C13.6638 19.0127 12.6477 19.8768 11.4739 20.4725C11.3267 20.5472 11.1773 20.6174 11.0259 20.683C10.8263 20.7693 10.6231 20.8473 10.4169 20.9161C10.1419 21.0078 9.86138 21.0832 9.57723 21.1407C9.30377 21.1961 9.02698 21.2348 8.74882 21.2565C8.6074 21.2675 8.46577 21.2736 8.32396 21.2763C8.27244 21.2769 8.27255 21.277 8.22097 21.2772C8.22097 21.2772 5.76861 21.2772 4.60241 21.2772C4.44264 21.2772 4.28942 21.2137 4.17644 21.1007C4.06347 20.9877 4 20.8345 4 20.6747C4 19.8737 4 18.4658 4 17.6641C4 17.504 4.06371 17.3505 4.17706 17.2375C4.29042 17.1245 4.4441 17.0612 4.60417 17.0617C5.8307 17.0668 7.04957 17.0835 8.27887 17.0595C8.3197 17.0584 8.36045 17.0565 8.4012 17.0538C8.52206 17.0449 8.6421 17.0284 8.76072 17.0035C9.26512 16.8975 9.73031 16.6512 10.1505 16.359C10.2467 16.2921 10.341 16.2224 10.4335 16.1505C10.8813 15.8022 11.2892 15.4043 11.6747 14.9891C12.1325 14.496 12.5597 13.9752 12.974 13.4454L13.4202 12.8568L13.9338 12.1794C14.263 11.7348 14.5909 11.2892 14.9208 10.8451C15.2208 10.4425 15.5226 10.0413 15.8315 9.64545L16.0534 9.37059L16.6055 8.68658C16.7885 8.46849 16.9748 8.25315 17.1653 8.04155C17.3135 7.87699 17.4641 7.71467 17.6177 7.55516C18.5244 6.61328 19.5436 5.75586 20.721 5.17244C20.8687 5.09923 21.0186 5.0305 21.1707 4.96665C21.371 4.88248 21.575 4.8068 21.782 4.7405C22.0581 4.65208 22.3395 4.58034 22.6244 4.52675C23.037 4.44913 23.4556 4.41129 23.8754 4.40964H23.8796V2L29 6.51808L23.8796 11.0362V8.62613L23.8796 8.62612ZM23.8796 17.0603V14.6506L29.0001 19.1687L23.8796 23.6868V21.2772H23.8755C23.4548 21.2755 23.0354 21.2378 22.6219 21.1604C22.3363 21.107 22.0543 21.0354 21.7775 20.9472C21.57 20.881 21.3655 20.8055 21.1645 20.7215C21.0121 20.6577 20.8617 20.5891 20.7135 20.516C19.5612 19.9476 18.5588 19.1173 17.6656 18.2021C17.5107 18.0434 17.3588 17.8817 17.2095 17.7177L16.8367 17.2927L17.245 16.7851C17.5606 16.3815 17.8688 15.9724 18.175 15.5618C18.5412 15.0691 18.9046 14.5742 19.2707 14.0814L19.4513 13.8496C19.8504 14.3447 20.2523 14.8149 20.6837 15.257C21.0485 15.6309 21.4353 15.9868 21.8589 16.2935C22.3133 16.6226 22.822 16.9033 23.3778 17.0117C23.5365 17.0426 23.6974 17.0583 23.859 17.0602L23.8796 17.0603L23.8796 17.0603ZM12.653 11.8696L11.9073 10.9784C11.4749 10.4903 11.0173 10.0199 10.5093 9.6098C10.4164 9.53478 10.3217 9.46191 10.2251 9.39175C10.1494 9.33676 10.0724 9.28343 9.99415 9.23209C9.58736 8.96532 9.13797 8.74715 8.65522 8.66402C8.51709 8.64024 8.37748 8.62826 8.23736 8.62662L8.21277 8.62652C8.21277 8.62652 5.76683 8.62652 4.60244 8.62652C4.26974 8.62652 4.00003 8.35681 4.00003 8.02411C4.00003 7.22248 4.00003 5.81327 4.00003 5.01179C4.00003 4.67922 4.26953 4.40957 4.6021 4.40938C5.82485 4.40836 7.04761 4.40506 8.27035 4.40985C8.32368 4.41048 8.37695 4.41152 8.43026 4.41298C8.57133 4.41795 8.71217 4.4262 8.85273 4.43941C9.12919 4.46539 9.40401 4.50842 9.67525 4.56782C9.94069 4.62595 10.2027 4.69975 10.4597 4.78789C10.6646 4.85819 10.8665 4.93759 11.0647 5.02522C11.23 5.09834 11.3928 5.17717 11.5529 5.26117C12.6304 5.82646 13.573 6.61796 14.4186 7.48621C14.5731 7.64492 14.7247 7.80653 14.8737 7.97046L15.2689 8.42177L14.8818 8.9042C14.5671 9.30731 14.2597 9.71593 13.9542 10.1259C13.5886 10.6181 13.2257 11.1124 12.8599 11.6045L12.653 11.8696L12.653 11.8696Z" fill="#00E0FF"/>
+            </G>
+            </Svg>
+        </TouchableOpacity>
+        <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10}}
         onPress={() => {
           this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
@@ -2075,34 +2213,40 @@ class ViewPost extends React.Component{
             })
           )) : null
         }}>
-        <Icon
-          size={32}
-          color={this.state.dark ? 'white' : 'black'}
-          name='arrow-redo-circle'
-        />
-        </Button>
-        <Button style={{backgroundColor: 'transparent', borderColor: 'transparent'}}
-             onPress={() => this.setState({showAwards: true, currentAwardUser: item.user})}>
-        <Icon
-          size={32}
-          color={this.state.dark ? 'white' : 'black'}
-          name='trophy'
-        />
-        </Button>
-        </Layout>
-        </Card>
+           <Svg width="40" height="37" viewBox="0 0 35 33" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <G filter="url(#filter0_d)">
+            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="white" stroke-width="2"/>
+            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="#FFF500" stroke-width="2"/>
+            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="#8000FF" stroke-width="2"/>
+            </G>
+            </Svg>
+        </TouchableOpacity>
+        </View>
+      </View>
   )
-  renderComments = ({item}) => (
-    <View style={{flexDirection :'row', marginVertical: 10}}>
-     <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
-        ><Avatar size='small' style={{marginRight: 5}}
-             source={{uri: item.userpic}} /></TouchableOpacity>
+  newComment (item) {
+    this.setState({newcomment: ''})
+    if(this.state.newcomment){
+      this.socket.emit('newComment', {
+        lid: item.id,
+        user: this.state.user,
+        text: this.state.newcomment,
+        url: '',
+        to: item.user
+      })
+    }else { alert('Comment Field is Empty!') }
+   }
+   renderComments = ({item, idx}) => (
+    <View style={{flexDirection :'row', marginVertical: 10}} key={idx}>
+      <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
+      ><Avatar size='small' style={{marginRight: 5}}
+           source={{uri: item.userpic}} /></TouchableOpacity>
       <View>
-           <Text style={{fontWeight: 'bold', marginLeft : 5, marginBottom: 4}}>{item.user} | {item.time}</Text>
+           <Text style={{fontWeight: 'bold', marginLeft : 5, marginBottom: 4}}>{item.user} | {this.state.language == 'en' ? item.time : <PowerTranslator text={item.time} target={this.state.language}  />}</Text>
        {item.image ? <FastImage source={{uri: item.image}} style={{
-        width: 100, height: 100}} resizeMode="contain" /> : <View 
+        width: 100, height: 100}}/> : <View 
         style={{backgroundColor: this.state.dark ? '#151a30' : '#edf1f7', padding: 15, borderRadius: 20, maxWidth: '90%' }}>
-              <Text style={{color: this.state.dark ? 'white' : 'black'}}>{this.formatMention(item.text)}</Text>
+              <Text>{this.formatMention(item.text)}</Text>
          </View>}
        </View> 
     </View>
@@ -2194,7 +2338,7 @@ class ViewPost extends React.Component{
             renderItem={this.renderPost}
           />
           <Divider style={{ marginVertical: 20 }} />
-          <Layout level="2" style={{width: "90%", padding: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center'}}>
+          <Layout style={{width: "90%", padding: 10, justifyContent: 'center', alignItems: 'center', alignSelf: 'center'}}>
           <Input
               value={this.state.newcomment}
               placeholder='Say Something...'
@@ -2207,7 +2351,7 @@ class ViewPost extends React.Component{
             <TouchableOpacity style={{ marginHorizontal: 7, marginVertical: 3 }} onPress={() => {
               GiphyUi.present(
                 {
-                  theme: 'light',
+                  theme: this.state.dark ? 'dark' : 'light',
                   layout: 'waterfall',
                   showConfirmationScreen: true,
                   mediaTypes: ['gifs', 'stickers', 'emoji', 'text'],
@@ -2236,6 +2380,7 @@ class ViewPost extends React.Component{
                 url: '',
                 to: this.state.data[0].user
               })
+              this.setState({newcomment: ''})
             }else { alert('Comment Field is Empty!') }
           }}>Share</Button>
             </View>
@@ -2264,7 +2409,9 @@ class ViewPost extends React.Component{
         <View style={{position: 'absolute', bottom: 0, width: Dimensions.get('window').width, height: "45%"}}>
         <Layout style={[styles.modalView, { justifyContent: 'center', alignItems: 'center',
            borderRadius: 0, backgroundColor: this.state.dark ? '#101426' : '#fff', width: "100%", height: "100%", border: 0, margin: 0 }]}>
-            <Text category="h6" style={{textAlign: 'center', marginVertical: 10}}>Award User</Text>
+            {this.state.language == 'en' ? <Text category="h6" style={{textAlign: 'center', marginVertical: 10}}>Award User</Text>
+            : <PowerTranslator text={'Award User'} style={{textAlign: 'center', marginVertical: 10, color: 
+            this.state.dark ? 'white' : 'black'}} target={this.state.language} />}
             <Divider />
             <ButtonGroup status="basic">
               <Button onPress={() => this.setState({awardAmount: 5})} style={{backgroundColor: this.state.dark ? 'transparent' : 'rgba(51, 102, 255, 0.16)'}}><Text style={{fontWeight: 'bold', fontSize: 20}}>5</Text> 
@@ -2516,9 +2663,10 @@ class Create extends React.Component{
       photos: [],
       images: [],
       contests: [],
+      joinedContest: false,
       showPhotosFrom: 'device',
       selectTemplate: true,
-      selectImage: true,
+      selectImage: false,
       numImages: 0,
       matrix: [],
       showTextTools: false,
@@ -2540,11 +2688,10 @@ class Create extends React.Component{
       enableLabel: false,
       enableDelete: false,
       showConfirmation: false,
-      thumbIcon: '',
       currentTextColor: 'black',
       currentBGColor: 'transparent',
       contestCost: 0,
-      Posted: false,
+      Posted: true,
       caption: '',
       remixUri: ''
     }
@@ -2553,8 +2700,6 @@ class Create extends React.Component{
   componentDidMount() {
     BackHandler.addEventListener('hardwareBackPress', this.handleBack)
     this.getPhotos()
-    Icon.getImageSource('circle', 35, 'white')
-   .then(source => this.setState({ thumbIcon: source }))
     this.fetchUser()
   }
   
@@ -2562,8 +2707,16 @@ class Create extends React.Component{
     BackHandler.removeEventListener('hardwareBackPress', this.handleBack);
   }
   handleBack(){
-    if(!this.state.selectTemplate){
-          this.setState({selectTemplate: true, texts: [], stickers: []})
+    if(!this.state.selectTemplate && !this.state.finalize && !this.state.Posted){
+        Alert.alert('Discard Meme?', 'You will lose your beautiful Meme if you go back :P', [
+          {
+            text: 'Cancel'
+          },
+          {
+            text: 'Discard',
+            onPress: () => this.setState({selectTemplate: true, texts: [], stickers: []})
+          }
+        ], {cancelable: true})
     }else{
       this.props.navigation.goBack()
     }
@@ -2594,16 +2747,21 @@ class Create extends React.Component{
     const status = await PermissionsAndroid.request(permission);
     return status === 'granted';
   }
-  getPhotos = async() => {
+  getPhotos = async(isSelection) => {
     if (Platform.OS === "android" && !(await this.hasAndroidPermission())) {
       return;
     }
     CameraRoll.getPhotos({
-      first: 100,
+      first: 200,
       assetType: 'Photos',
     })
     .then(r => {
-      this.setState({ photos: r.edges, showPhotosFrom: 'device', images: [r.edges[0].node.image.uri], numImages: 1, refreshingPhotos: false })
+      if(isSelection == 'yes'){
+        this.setState({ photos: r.edges,  refreshingPhotos: false, showImageTools: true })
+      }else{
+        this.setState({ photos: r.edges, showPhotosFrom: 'device', images: [r.edges[0].node.image.uri ? r.edges[0].node.image.uri : null], numImages: 1, refreshingPhotos: false })
+      }
+      
     })
     .catch((err) => {
        //Error Loading Images
@@ -2678,7 +2836,6 @@ class Create extends React.Component{
       .then((response) => response.json())
       .then((responseJson) => {
           this.setState({contests: responseJson})
-          console.log(responseJson)
       })
       .catch((err) => {
         console.log(err)
@@ -2917,7 +3074,9 @@ class Create extends React.Component{
         }, 0)
         
         upload.then((resp) => {
-          this.setState({meme: resp.text()})
+          var check = resp.text()
+          if(check != 'error'){
+            this.setState({meme: resp.text()})
             fetch('https://lishup.com/app/newpost.php', {
                 method: 'POST',
                 headers: {
@@ -2927,7 +3086,9 @@ class Create extends React.Component{
                 body: JSON.stringify({ 
                   user: this.state.user, img: resp.text(), 
                   text: this.state.caption, community: 46, 
-                  cost: this.state.contestCost }),
+                  cost: this.state.contestCost,
+                  remixed: this.state.remixUri }),
+                  
               })
               .then((response) => response.json())
               .then((responseJson) => {
@@ -2942,7 +3103,61 @@ class Create extends React.Component{
                 console.log(err)
                 ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
               })
+          }else{
+            ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
+          }
         })
+  }
+  joinContest(){
+    fetch('https://lishup.com/app/joinContest.php', {
+                method: 'POST',
+                headers: {
+                  Accept: 'application/json',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                  user: this.state.user, 
+                  text: this.state.caption,
+                  cost: this.state.contestCost}),
+                  
+              })
+              .then((response) => response.json())
+              .then((responseJson) => {
+                  if(responseJson == 'success'){
+                    ToastAndroid.show('Joined Successfully', ToastAndroid.SHORT)
+                    this.setState({joinedContest: true})
+                  }else{
+                    ToastAndroid.show(responseJson, ToastAndroid.SHORT)
+                  }
+              })
+              .catch((err) => {
+                console.log(err)
+                ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
+              })
+  }
+  joinedContestYet(){
+    if (this.state.contests.some(e => e.isChecked === true)) {
+      return true
+    }
+    return false
+  }
+  fetchGemsBalance(){
+    fetch('https://lishup.com/app/user.php', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user: this.state.user,
+        current: this.state.user
+      }),
+    })
+    .then((response) => response.json())
+    .then((responseJson) => {
+      this.setState({gems: responseJson.points, userpic: responseJson.pic})
+      //console.log(responseJson)
+    })
   }
   render(){
     if(this.state.selectTemplate){
@@ -3063,8 +3278,8 @@ class Create extends React.Component{
         <Icon name="arrow-forward-circle" size={40} color="#00BBFF" style={{ top: 20, position: 'absolute', right: 20}} 
              onPress={() => this.refs.viewShot.capture().then(uri => {
               console.log("do something with ", uri)
-              this.setState({meme: uri, finalize: true})
-              this.fetchContests()
+              this.setState({meme: uri, cachedMeme: uri, finalize: true})
+              
             })}/>
         </View>
         <ViewShot ref="viewShot" options={{ format: "jpg", quality: 0.9 }}>
@@ -3189,8 +3404,7 @@ class Create extends React.Component{
       <Icon name="md-happy" size={30} color={this.state.showStickerTools ? "#45DAFF" : "white"} onPress={() => this.addSticker() } />
       <Icon name="image" size={30} color="white" 
         color={this.state.showImageTools ? "#45DAFF" : "white"} onPress={() => {
-          this.getPhotos()
-          this.setState({showImageTools: true})} } />
+          this.getPhotos('yes')} } />
     </View>
     {this.state.enableDelete ?
     <Icon name="md-trash-bin" size={50} color="white" style={{position: 'absolute', bottom: 50, zIndex: 20, alignSelf: 'center'}} />
@@ -3213,7 +3427,7 @@ class Create extends React.Component{
             refreshControl={<RefreshControl
               colors={["#9Bd35A", "#689F38"]}
               onRefresh={() => {
-                this.getPhotos()
+                this.getPhotos('yes')
                 this.setState({refreshingPhotos: true})
               }}
               refreshing={this.state.refreshingPhotos} />}
@@ -3232,7 +3446,7 @@ class Create extends React.Component{
         <View style={{position: 'absolute', margin: 0, alignSelf: 'flex-start', top: 100, left: 0, right: 0, alignItems: 'center'}}>
            <Slider minimumValue={15} maximumValue={50} onValueChange={val => this.changeTextSize(val)} style={{width: 200, height: 40}}
             thumbTintColor="white" minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#fff" thumbImage={this.state.thumbIcon} value={this.getTextDetails(null, 'FontSize')} />
+            maximumTrackTintColor="#fff" value={this.getTextDetails(null, 'FontSize')} />
             </View>
         <View style={{position: 'absolute', alignSelf: 'center', top: 0, bottom: 0, justifyContent: 'center'
          }}>
@@ -3244,7 +3458,7 @@ class Create extends React.Component{
              <FlatList data={[{name: 'impact', title: 'Meme'}, {name: 'Arial', title: 'Classic'},
             {name: 'comicz', title: 'Comic'}, {name: 'Satisfy-Regular', title: 'Fancy'}, {name: 'Jokerman-Regular', title: 'Joker'}]}
             renderItem={({item, idx}) => (
-              <NativeText style={{backgroundColor: this.getTextDetails(item.name) ? '#000' : '#fff', color: this.getTextDetails(item.name) ? '#fff' : 'black', 
+              <NativeText style={{backgroundColor: this.getTextDetails(item.name) ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.5)', color:  'black', 
           borderRadius: 15, padding: 10, paddingVertical: 5, fontSize: 25, marginHorizontal: 2, fontFamily: item.name }}
               onPress={() => this.changeTextFont(item.name)}>{item.title}</NativeText>
             )} horizontal={true} 
@@ -3314,42 +3528,18 @@ class Create extends React.Component{
           <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
             marginTop: 0}} resizeMode="contain" />
             <ScrollView>
-         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
-          onPress={() => this.setState({showConfirmation: true})}>
-            <NativeText style={{color: 'white', fontSize: 25}}>Post</NativeText></TouchableOpacity>
-         
-         <Overlay overlayStyle={{alignSelf: 'center', backgroundColor: 'black', justifyContent: 'center', alignItems: 'center', borderRadius: 20,
-           maxHeight: '60%', minHeight: '15%', width: '90%', borderColor: 'white', 
-          borderWidth: 1, padding: 10}} backdropStyle={{backgroundColor: 'rgba(0, 0, 0,0.7)', flex: 1}}
-            isVisible={this.state.showConfirmation}  onBackdropPress={() => this.setState({showConfirmation: false})}>
-            <NativeText style={{color: 'white', fontSize: 30, fontFamily: 'impact', margin: 5, marginBottom: 5,}}>Join Contests!</NativeText>
-            <NativeText style={{color: 'white', opacity: 0.5, marginBottom: 15,}}>Meme & Win</NativeText>
-            <FlatList data={this.state.contests}
-             renderItem={({item, idx}) => (
-               <View style={{flexDirection: 'row', alignItems: 'center', margin: 8}}>
-                 <Icon name={item.isChecked ? 'md-checkmark-circle' : 'md-checkmark-circle-outline'} size={30} 
-                 color={item.isChecked ? "#5200FF" : 'white'} onPress={() => this.addContest(item)}/>
-                 <View>
-                 <NativeText style={{color: 'white', textAlign: 'center', fontSize: 20, margin: 5}} >
-                   #{item.title.replace(/\s/g, '')}</NativeText>
-                 <NativeText style={{fontSize: 10,
-                   opacity: 0.5, color: 'white'}}>Winner gets {item.prize} Gems</NativeText>
-                 </View>
-                  <NativeText style={{ fontSize: 20, marginLeft: 5, alignItems: 'center', color: 'white'}}>
-                    {parseInt(item.cost)} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
-                </Svg>
-                </NativeText>
-                </View>
-             )} keyExtractor={(item, idx) => idx} />
-          <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 45, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
           onPress={() => this.post()}>
-            <NativeText style={{color: 'white', fontSize: 25}}>
-              Continue {this.state.contestCost} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
-                </Svg></NativeText></TouchableOpacity>
-          </Overlay>
-
+            <NativeText style={{color: 'white', fontSize: 30}}>Post</NativeText></TouchableOpacity>
+            <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, 
+     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
+          onPress={() => {
+                CameraRoll.save(this.state.cachedMeme)
+                ToastAndroid.show('Meme Saved to Phone', ToastAndroid.SHORT)
+        }}>   
+          <Icon name="ios-download" size={25} color="white" />            
+     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Save to Phone</NativeText></TouchableOpacity>  
+         
           </ScrollView>
         </View>   
       )  
@@ -3358,7 +3548,7 @@ class Create extends React.Component{
       <View style={{flex: 1, backgroundColor: 'black'}}> 
       <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Meme Posted</NativeText>
       <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
-        marginTop: 0}} resizeMode="contain" />
+        marginTop: 0}} resizeMode="contain" /> 
       <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, flexDirection: 'row', alignItems: 'center',
       paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
           onPress={() => this.props.navigation.navigate('Profile', {
@@ -3373,13 +3563,82 @@ class Create extends React.Component{
           ToastAndroid.show('Link to Meme Copied', ToastAndroid.SHORT)}}>   
           <Icon name="copy" size={25} color="white" />            
      <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Copy Link</NativeText></TouchableOpacity>
+    
+     <View style={{flexDirection: 'row', marginTop: 20, alignContent: 'center', alignItems: 'center', justifyContent: 'center'}}>
+      <SwitchWithIcons value={this.state.joinedContest|| this.state.showConfirmation} 
+      onValueChange={val => {
+        this.fetchContests()
+        this.fetchGemsBalance()
+        this.setState({showConfirmation: true})
+      }} thumbColor={{true: 'white', false: 'white'}} trackColor={{true: '#35C759', false: '#373737'}}
+       style={{alignSelf: 'center', marginTop: 10, transform: [{ scaleX: 1.3 }, { scaleY: 1.3 }] }} />
 
+       <NativeText style={{color: 'white', fontSize: 25, textAlign:'center', marginLeft: 20, textAlignVertical: 'center'}}>Join Contests</NativeText>
+         </View>
+
+     <Overlay overlayStyle={{alignSelf: 'center', justifyContent: 'center', alignItems: 'center',
+           height: '100%', width: '100%', backgroundColor: 'rgba(0, 0, 0, 1)'}} backdropStyle={{backgroundColor: 'rgba(0, 0, 0, 1)', flex: 1}}
+            isVisible={this.state.showConfirmation}  onBackdropPress={() => this.setState({showConfirmation: false})}>
+            <NativeText style={{color: 'white', position: 'absolute', top: 10, right: 20}}>
+              <NativeImage style={{width: 20, height: 20, borderRadius: 10, marginRight: 10}} source={{uri: this.state.userpic}} />  {this.state.gems} <Svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                   <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                   </Svg></NativeText>  
+            <View style={{alignSelf: 'center', backgroundColor: 'rgba(99, 99, 99, 0.8)', justifyContent: 'center', alignItems: 'center', borderRadius: 20,
+           maxHeight: '60%', minHeight: '15%', width: '90%', borderColor: 'white', padding: 0}}>  
+            <NativeText style={{color: 'white', fontSize: 30, fontFamily: 'impact', margin: 5, marginBottom: 5,}}>Choose Contests</NativeText>
+            <FlatList data={this.state.contests}
+             renderItem={({item, idx}) => (
+               <ScrollView style={{ margin: 8}} horizontal={true} contentContainerStyle={{alignItems: 'center', flexDirection: 'row', }}>
+                 <SwitchWithIcons value={item.isChecked}
+                 trackColor={{true: '#35C759', false: '#373737'}}
+                 style={{marginRight: 20}} thumbColor={{true: 'white', false: '#636363'}} onValueChange={() => this.addContest(item)}/>
+                 <View>
+                 <NativeText style={{color: 'white', textAlign: 'center', fontSize: 15, margin: 5}} >
+                   {item.title}</NativeText>
+                 <NativeText style={{fontSize: 10,
+                   opacity: 0.5, color: 'white'}}>🏆 = {item.prize} Gems   ~  <NativeText style={{fontWeight: 'bold'}}>{item.cost > 0 ? parseInt(item.cost) : 'Free'} {item.cost > 0 ? <Svg width="15" height="10" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                   <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                   </Svg> : null}</NativeText></NativeText>
+                 </View>
+                
+                </ScrollView>
+             )} keyExtractor={(item, idx) => idx} />
+          <TouchableOpacity style={{backgroundColor: this.joinedContestYet() ? this.state.contestCost > 0 ? '#F10065' : '#35C759' : '#373737', padding: 10, paddingHorizontal: 25, borderRadius: 15, marginTop: 10,
+          width: '100%', textAlign: 'center', alignItems: 'center', alignContent: 'center', alignSelf: 'center', justifyContent: 'center',
+           flexDirection: 'row', borderTopLeftRadius: 0, borderTopRightRadius: 0}} 
+          onPress={() => this.joinedContestYet() ? this.joinContest() : this.setState({showConfirmation: false})}>
+            <NativeText style={{color: 'white', fontSize: 30, textAlign: 'center', fontFamily: 'impact'}}>
+              {this.joinedContestYet() ? 'Join' : 'Cancel'}   </NativeText>
+              {this.state.contestCost > 0 ? <NativeText style={{color: '#F10065',
+              padding: 5, borderRadius: 10, paddingHorizontal: 10, backgroundColor: 'white', fontSize: 30, fontFamily: 'impact'}}>
+                {this.state.contestCost > 0 ? this.state.contestCost : null} <Svg width={this.state.contestCost > 0 ? "25" : "0"} height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#F10065" stroke="#fff" stroke-width="0.91965" />
+                </Svg></NativeText> : null}</TouchableOpacity>
+          </View></Overlay>
     </View>
       )   
     }
   }
   }
 }
+var sunglasses = [
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510919139196948/noun_Sunglasses_29025973x.png', flairPrice: 80},
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510914323349534/noun_mask_2845555_13x.png', flairPrice: 150},
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510910296686612/noun_fancy_glasses_35715303x.png', flairPrice: 150},
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510915556474880/noun_Sunglasses_10062153x.png', flairPrice: 180},
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510916747526154/noun_Sunglasses_11582603x.png', flairPrice: 180},
+  {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510917692293150/noun_Sunglasses_18565193x.png', flairPrice: 180}
+]
+var flairs = [
+  {flairURL: 'https://media.giphy.com/media/aRZ4vTsHnyW6A/giphy.gif', flairPrice: 0},
+  {flairURL: 'https://media.tenor.com/images/b168b139c01a69e19e14bc609666ef2b/tenor.gif', flairPrice: 0},
+  {flairURL: 'https://media.giphy.com/media/l378wcSfS7eXWQgla/giphy.gif', flairPrice: 0},
+  {flairURL: 'https://media.giphy.com/media/zNbqGADAp9bSU/giphy.gif', flairPrice: 0},
+  {flairURL: 'https://media.giphy.com/media/3og0IMh7rRNPtNSK9q/giphy.gif', flairPrice: 100},
+  {flairURL: 'https://media.giphy.com/media/3o6ZtgnmZDZeAshxYY/giphy.gif', flairPrice: 100},
+  {flairURL: 'https://media.giphy.com/media/YWf50NNii3r4k/giphy.gif', flairPrice: 150},
+  {flairURL: 'https://media.giphy.com/media/l3q2Dh5BA4zRFSwak/giphy.gif', flairPrice: 150}
+]
 class Profile extends React.Component{
 
   static navigationOptions = ({navigation}) => {
@@ -3416,31 +3675,14 @@ class Profile extends React.Component{
     newAvatar: '',
     previewFlair: false,
     previewIndex: 0,
-    flairs: [
-      {flairURL: 'https://media.giphy.com/media/aRZ4vTsHnyW6A/giphy.gif', flairPrice: 0},
-      {flairURL: 'https://media.tenor.com/images/b168b139c01a69e19e14bc609666ef2b/tenor.gif', flairPrice: 0},
-      {flairURL: 'https://media.giphy.com/media/l378wcSfS7eXWQgla/giphy.gif', flairPrice: 0},
-      {flairURL: 'https://media.giphy.com/media/zNbqGADAp9bSU/giphy.gif', flairPrice: 0},
-      {flairURL: 'https://media.giphy.com/media/3og0IMh7rRNPtNSK9q/giphy.gif', flairPrice: 100},
-      {flairURL: 'https://media.giphy.com/media/3o6ZtgnmZDZeAshxYY/giphy.gif', flairPrice: 100},
-      {flairURL: 'https://media.giphy.com/media/YWf50NNii3r4k/giphy.gif', flairPrice: 150},
-      {flairURL: 'https://media.giphy.com/media/l3q2Dh5BA4zRFSwak/giphy.gif', flairPrice: 150}
-    ],
-    sunglasses: [
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510919139196948/noun_Sunglasses_29025973x.png', flairPrice: 80},
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510914323349534/noun_mask_2845555_13x.png', flairPrice: 150},
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510910296686612/noun_fancy_glasses_35715303x.png', flairPrice: 150},
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510915556474880/noun_Sunglasses_10062153x.png', flairPrice: 180},
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510916747526154/noun_Sunglasses_11582603x.png', flairPrice: 180},
-      {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510917692293150/noun_Sunglasses_18565193x.png', flairPrice: 180}
-    ],
     previewSunglass: false,
     follows: false,
     moreOptions: false,
     reportUser: false,
     reportReason: '',
     followtype: 'following',
-    followData: []
+    followData: [],
+    language: 'en'
   }
   constructor(props){
     super(props)
@@ -3547,6 +3789,7 @@ class Profile extends React.Component{
 
     try {
       var me = await AsyncStorage.getItem('user')
+      var lan = await AsyncStorage.getItem('language')
       var bookmarks = await AsyncStorage.getItem('bookmarks')
       
       if(bookmarks){
@@ -3558,6 +3801,7 @@ class Profile extends React.Component{
         this.setState({user: me})
         this.fetch(user)
       }
+      this.setState({language: lan ? lan : 'en'})
     } catch(e) {
       ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
     }
@@ -3576,8 +3820,8 @@ class Profile extends React.Component{
     })
     .then((response) => response.json())
     .then((responseJson) => {
-      console.log(responseJson)
-       this.setState({data: responseJson, loading: false, profileUser: user})
+      if(responseJson){
+        this.setState({data: responseJson, loading: false, profileUser: user})
        this.props.navigation.setParams({fullName: responseJson.fullName})
        if(responseJson.isfollowing == 'yes'){
          this.props.navigation.setParams({ isfollowing :  'yes' })
@@ -3587,6 +3831,11 @@ class Profile extends React.Component{
        if(user == this.state.user){
         this.props.navigation.setParams({showStore: 'true', balance: responseJson.points})
        }
+      }else{
+        ToastAndroid.show('Could not find User :(', ToastAndroid.SHORT)
+        this.props.navigation.goBack()
+      }
+       
      })
   }
   follow(user, type){
@@ -3742,13 +3991,13 @@ class Profile extends React.Component{
     ToastAndroid.show('Changing to your awesome Flair', ToastAndroid.SHORT)
     let data = this.state.data
     if(type == 'profile_flair'){
-      data.flair = this.state.flairs[index].flairURL
-      var flairURL = this.state.flairs[index].flairURL
+      data.flair = flairs[index].flairURL
+      var flairURL = flairs[index].flairURL
     }else{
-      data.sunglass = this.state.sunglasses[index].sgURL
-      var flairURL = this.state.sunglasses[index].sgURL
+      data.sunglass = sunglasses[index].sgURL
+      var flairURL = sunglasses[index].sgURL
     }
-    data.points = data.points - this.state.flairs[index].flairPrice
+    data.points = data.points - flairs[index].flairPrice
     this.setState({data: data})
     fetch('https://lishup.com/app/updateFlair.php', {
           method: 'POST',
@@ -3758,7 +4007,7 @@ class Profile extends React.Component{
           },
           body: JSON.stringify({ 
            flair: flairURL,
-           cost: this.state.flairs[index].flairPrice,
+           cost: flairs[index].flairPrice,
            user: this.state.user,
            type: type
           }),
@@ -3809,7 +4058,7 @@ class Profile extends React.Component{
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-           user: this.state.user,
+           user: this.state.profileUser,
            type: type
           }),
         })
@@ -3952,12 +4201,16 @@ class Profile extends React.Component{
                padding: 10, alignSelf: 'center', fontSize: 20}} status="danger">Buy 9.99$</Button>
             </View>
           </ScrollView>
-          <Text category="h6" style={{marginLeft: 10, marginVertical: 10}}>BackGrounds</Text>
+          <Text category="h6" style={{marginLeft: 10, marginVertical: 10}}>{this.state.language == 'en' ? 'Backgrounds' : 
+            <PowerTranslator text="Backgrounds" 
+                      target={this.state.language} />}</Text>
             <ScrollView style={{backgroundColor: this.state.dark ? '#101426' : '#fff', width: "100%" }}
              horizontal={true}>
                <TouchableOpacity onPress={() =>  this.removeFlair('profile_flair') } style={{backgroundColor: 'rgba(0, 0, 0, 0.1)', borderRadius: 10, height: 200, width: 200,
                  margin: 10, justifyContent: 'center'}}>
-                   <Text style={{alignSelf: 'center', fontSize: 20}}>None</Text>
+                   <Text style={{alignSelf: 'center', fontSize: 20}}>{this.state.language == 'en' ? 'None' : 
+            <PowerTranslator text="None" 
+                      target={this.state.language} />}</Text>
               </TouchableOpacity>
                <TouchableOpacity onPress={() =>  this.setState({previewFlair: true, previewIndex: 0})  }>
               <FastImage source={{uri: 'https://media.giphy.com/media/aRZ4vTsHnyW6A/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"
@@ -3984,13 +4237,17 @@ class Profile extends React.Component{
               <FastImage source={{uri: 'https://media.giphy.com/media/l3q2Dh5BA4zRFSwak/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
               </TouchableOpacity>
             </ScrollView>
-            <Text category="h6" style={{marginLeft: 10, marginVertical: 10}}>SunGlasses</Text>
+            <Text category="h6" style={{marginLeft: 10, marginVertical: 10}}>{this.state.language == 'en' ? 'Sunglasses' : 
+            <PowerTranslator text="Sunglasses" 
+                      target={this.state.language} />}</Text>
             <ScrollView style={{backgroundColor: this.state.dark ? '#101426' : '#fff', width: "100%" }}
              horizontal={true}>
                <TouchableOpacity onPress={() => this.removeFlair('profile_sunglass') } style={{height: 100, width: 100, borderRadius: 10, margin: 10,
                  justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.1)'}}>
               <Text style={{alignSelf: 'center', fontSize: 20}} 
-                 >None</Text></TouchableOpacity>
+                 >{this.state.language == 'en' ? 'None' : 
+                 <PowerTranslator text="None" 
+                           target={this.state.language} />}</Text></TouchableOpacity>
                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 0}) }>
               <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510919139196948/noun_Sunglasses_29025973x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
                  /></TouchableOpacity>
@@ -4053,14 +4310,17 @@ class Profile extends React.Component{
       return 0.5
     }
   }
-   m(n,d){
-    var x
-    var p
-    x=(''+n).length,
-    p=Math.pow,
-    d=p(10,d)
-    x-=x%3
-    return Math.round(n*d/p(10,x))/d+" kMGTPE"[x/4]
+   m(num){
+      if (num >= 1000000000) {
+         return (num / 1000000000).toFixed(1).replace(/\.0$/, '') + 'G'
+      }
+      if (num >= 1000000) {
+         return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+      }
+      if (num >= 1000) {
+         return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K'
+      }
+      return num
   }
   render(){
     if(this.state.loading){
@@ -4102,30 +4362,35 @@ class Profile extends React.Component{
                 </ImageBackground>    
                 </View>
                 </View>
-                <Text appearance="hint" style={{textAlign: 'left', marginHorizontal: 10, marginLeft: 20, alignSelf: 'center'}}
-                >{this.state.data.description}</Text>
+              <Text appearance="hint" style={{textAlign: 'left', marginHorizontal: 10, marginLeft: 20, alignSelf: 'center'}}
+                >{this.state.language == 'en' ? this.state.data.description : <PowerTranslator text={this.state.data.description}
+                target={this.state.language} />}</Text>
               </View>     
                   <View style={{  justifyContent: 'center', alignContent: 'center', width: "40%", paddingTop: 20, paddingLeft: 10}}>
                     <TouchableOpacity style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}
                     onPress={() => this.fetchFollows('following')}>
-                      <Text category="h5">{this.m(this.state.data.follows, 3)}</Text>
-                      <Text category="s2" appearance="hint">Following</Text>
+                      <Text category="h5">{this.m(this.state.data.follows)}</Text>
+                      <Text category="s2" appearance="hint">{this.state.language == 'en' ? 'Following' : <PowerTranslator text="Following" 
+                      target={this.state.language} />}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}
                     onPress={() => this.fetchFollows('follower')}>
-                      <Text category="h5">{this.m(this.state.data.followers, 3)}</Text>
-                      <Text category="s2" appearance="hint">Followers</Text>
+                      <Text category="h5">{this.m(this.state.data.followers)}</Text>
+                      <Text category="s2" appearance="hint">{this.state.language == 'en' ? 'Followers' : <PowerTranslator text="Followers" 
+                      target={this.state.language} />}</Text>
                     </TouchableOpacity>
                     <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
-                      <Text category="h5">{this.m(this.state.data.posts, 2)}</Text>
-                      <Text category="s2" appearance="hint">Loves</Text>
+                      <Text category="h5">{this.m(this.state.data.posts)}</Text>
+                      <Text category="s2" appearance="hint">{this.state.language == 'en' ? 'Loves' : <PowerTranslator text="Loves" 
+                      target={this.state.language} />}</Text>
                     </View>
                     <View style={{alignItems: 'flex-start', textAlign: 'left', marginVertical: 5, marginHorizontal: 20}}>
-                        <Text category="h5">{this.m(this.state.data.points, 3)} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                        <Text category="h5">{this.m(this.state.data.points)} <Svg width="25" height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg" 
                         style={{marginHorizontal: 10}}>
                 <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
                 </Svg></Text>
-                        <Text category="s2" appearance="hint">Gems</Text>
+                        <Text category="s2" appearance="hint">{this.state.language == 'en' ? 'Gems' : <PowerTranslator text="Gems" 
+                      target={this.state.language} />}</Text>
                     </View>
                     {this.me()}
                   </View>
@@ -4183,7 +4448,7 @@ class Profile extends React.Component{
          overlayStyle={{width: "80%", height: "60%", backgroundColor: 'transparent', elevation: 0, zIndex: 30 }}  animationType="slide">
              <Carousel
               ref={(c) => { this._PreviewCarousel = c; }}
-              data={this.state.flairs}
+              data={flairs}
               renderItem={this.renderPreviewFlair}
               sliderWidth={(Dimensions.get('window').width * 80) / 100}
               sliderHeight={(Dimensions.get('window').height * 50) / 100}
@@ -4201,10 +4466,12 @@ class Profile extends React.Component{
            <View style={{flexDirection: 'row', justifyContent: 'space-evenly', marginBottom: 20}}>
              <Text style={{color: 'white', margin: 10,fontWeight: 'bold',
                opacity: this.state.followtype == 'following' ? 1 : 0.6}} 
-               onPress={() => this.fetchFollows('following')}>Following {this.m(this.state.data.follows, 3)}</Text>
+               onPress={() => this.fetchFollows('following')}>{this.state.language == 'en' ? 'Following' : <PowerTranslator text="Following" 
+               target={this.state.language} />} {this.m(this.state.data.follows)}</Text>
              <Text style={{color: 'white', margin: 10,fontWeight: 'bold',
             opacity: this.state.followtype == 'follower' ? 1 : 0.6}}
-            onPress={() => this.fetchFollows('follower')}>Followers {this.m(this.state.data.followers, 3)}</Text>
+            onPress={() => this.fetchFollows('follower')}>{this.state.language == 'en' ? 'Followers' : <PowerTranslator text="Followers" 
+            target={this.state.language} />} {this.m(this.state.data.followers)}</Text>
            </View>
            <FlatList data={this.state.followData}
            renderItem={({item, idx}) => (
@@ -4224,7 +4491,8 @@ class Profile extends React.Component{
               <Button appearance="outline" style={{padding: 2, borderColor: 'white',
                 right: 0, alignSelf: 'flex-end'}} size="small" onPress={() => this.follow(item.user, 'list')}>
                  {evaProps => <Text {...evaProps} style={{fontSize: 12, color: 'white'}}>
-                   {item.isfollowing > 0 ? 'Unfollow' : 'Follow'}</Text>}
+                 {this.state.language == 'en' ? item.isfollowing > 0 ? 'Unfollow' : 'Follow' : <PowerTranslator text={item.isfollowing > 0 ? 'Unfollow' : 'Follow'} 
+                      target={this.state.language} />}</Text>}
                </Button> : null}
              </View>
            )} />
@@ -4234,7 +4502,7 @@ class Profile extends React.Component{
          overlayStyle={{width: "80%", height: "60%", backgroundColor: 'transparent', elevation: 0, zIndex: 30 }}  animationType="slide">
              <Carousel
               ref={(c) => { this._sgPreviewCarousel = c; }}
-              data={this.state.sunglasses}
+              data={sunglasses}
               renderItem={this.renderPreviewSg}
               sliderWidth={(Dimensions.get('window').width * 80) / 100}
               sliderHeight={(Dimensions.get('window').height * 50) / 100}
@@ -4599,7 +4867,7 @@ class Messaging extends React.Component{
     })
     if(id == 1){
       this.setState({loading: true})
-      this.load()
+      this.fetch()
     }
   }
   onLongPress = (context, message) => {
@@ -4625,7 +4893,7 @@ return (
       }} activeOpacity={0.5} onPress={()=> {
         GiphyUi.present(
           {
-            theme: 'light',
+            theme: this.state.dark ? 'dark' : 'light',
             layout: 'waterfall',
             showConfirmationScreen: true,
             mediaTypes: ['gifs', 'stickers', 'emoji', 'text'],
@@ -4823,14 +5091,17 @@ class Contests extends React.Component{
   state = {
     dark: false,
     loading: true,
+    language: 'en',
     data: []
   }
-  componentDidMount(){
+  componentDidMount () {
     const { params } = this.props.navigation.state
     const dark = params ? params.dark : null
-    this.setState({dark: dark})
+
+    
 
     this.fetch()
+    this.fetchLanguage()
     StatusBar.setBackgroundColor("rgba(0,0,0,0)")
     StatusBar.setBarStyle("light-content")
     StatusBar.setTranslucent(true)
@@ -4845,13 +5116,19 @@ class Contests extends React.Component{
     })
     .then((response) => response.json())
     .then((responseJson) => {
-        this.setState({data: responseJson, loading: false})
-        console.log(responseJson)
+      
+      this.setState({data: responseJson, loading: false})
     })
     .catch((err) => {
       console.log(err)
       ToastAndroid.show('Request Failed', ToastAndroid.SHORT)
     })
+  }
+  fetchLanguage =async() => {
+    var lan = await AsyncStorage.getItem('language')
+    this.setState({language: lan ? lan : 'en'})
+
+    console.log(this.state.language)
   }
   renderList = ({item, index}) => (
       <LinearGradient colors={['#396afc', '#2948ff']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} 
@@ -4896,7 +5173,7 @@ class Contests extends React.Component{
                <Path fill="#5000ca" fill-opacity="1" d="M0,224L48,186.7C96,149,192,75,288,85.3C384,96,480,192,576,208C672,224,768,160,864,133.3C960,107,1056,117,1152,122.7C1248,128,1344,128,1392,128L1440,128L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z" />
             </Svg>
             <Text category="h2" style={{textAlign: 'center', marginVertical: 10, marginTop: 30, color: 'white'}}>
-              Join Contests, Win Prizes</Text>
+            {this.state.language == 'en' ? "Join Contests, Win Prizes" : <PowerTranslator text="Join Contests, Win Prizes" target={this.state.language} />}</Text>
           </View>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
           priority: FastImage.priority.high,}} style={{
@@ -4920,7 +5197,7 @@ class Contests extends React.Component{
                <Path fill="#5000ca" fill-opacity="1" d="M0,224L48,186.7C96,149,192,75,288,85.3C384,96,480,192,576,208C672,224,768,160,864,133.3C960,107,1056,117,1152,122.7C1248,128,1344,128,1392,128L1440,128L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z" />
             </Svg>
             <Text category="h2" style={{textAlign: 'center', marginVertical: 10, marginTop: 30, color: 'white'}}>
-              Join Contests, Win Prizes</Text>
+            {this.state.language == 'en' ? "Join Contests, Win Prizes" : <PowerTranslator text="Join Contests, Win Prizes" target={this.state.language} />}</Text>
           </View>
           <View style={{marginTop: "30%", backgroundColor: 'transparent'}}>
           <List
@@ -4953,7 +5230,8 @@ class ContestDetails extends React.Component{
     data: [],
     imageUrls: [],
     posts: [],
-    hashtag: ''
+    hashtag: '',
+    language: 'en'
   }
   componentDidMount(){
     const { params } = this.props.navigation.state
@@ -4968,8 +5246,9 @@ class ContestDetails extends React.Component{
   fetchUser = async() => {
     try {
       var user = await AsyncStorage.getItem('user')
+      var lan = await AsyncStorage.getItem('language')
       if(user !== null) {
-        this.setState({user: user})
+        this.setState({user: user, language: lan ? lan : 'en'})
         this.fetch(user)
       }
     } catch(e) {
@@ -5068,7 +5347,7 @@ class ContestDetails extends React.Component{
          /> )) : null }
          </View>
        <Text style={{textAlign: 'center', marginVertical: 10, color: item.isliked ? 'white' : 'black' }} category="s1" numberOfLines={2}>
-         {item.text}
+       {this.state.language == 'en' ? item.text : <PowerTranslator text={item.text} target={this.state.language} />}
       </Text>
     </Layout>
     </TouchableOpacity>
@@ -5091,15 +5370,15 @@ class ContestDetails extends React.Component{
             <Text category="h2" style={{textAlign: 'center', marginVertical: 10, color: 'white'}}>
                {this.state.data.title}</Text>
             <Text category="s1" style={{textAlign: 'center', marginHorizontal: 30, marginBottom: 20, color: 'white'}}>
-            Tag Posts with <Text style={{fontWeight: 'bold', color:'white'}}>#{this.state.hashtag ? this.state.hashtag : null}</Text> to Join and Win {this.state.data.prize} gems
+            {this.state.language == 'en' ? 'Tag Posts with' : <PowerTranslator text='Tag Posts with' target={this.state.language} />} <Text style={{fontWeight: 'bold', color:'white'}}>#{this.state.hashtag ? this.state.hashtag : null}</Text> {this.state.language == 'en' ? 'to Join and Win' : <PowerTranslator text='to Join and Win' target={this.state.language} />}  {this.state.data.prize} gems
             </Text>
             <Button style={{padding: 10, width: 200, alignSelf: 'center', borderRadius: 30, backgroundColor: '#c728b2', borderColor: 'transparent'}}
              onPress={() => this.props.navigation.navigate('Create', {text: '#' + this.state.hashtag, dark: this.state.dark})}>
               Join Now</Button>     
           </LinearGradient>
           <View style={{marginTop: "28%", flex: 1}}>
-            <Text category="h6" style={{margin: 10, textAlign: 'center'}}>Top Posts by Loves</Text>
-            <Text appearance="hint" style={{margin: 5, textAlign: 'center'}}>Long Press to Love!</Text>
+            <Text category="h6" style={{margin: 10, textAlign: 'center'}}>{this.state.language == 'en' ? 'Top Posts by Love' : <PowerTranslator text='Top Posts by Love' target={this.state.language} />}</Text>
+            <Text appearance="hint" style={{margin: 5, textAlign: 'center'}}>{this.state.language == 'en' ? 'Long Press to Love' : <PowerTranslator text='Long Press to Love' target={this.state.language} />}</Text>
             <Carousel
               ref={(c) => { this._postcarousel = c; }}
               data={this.state.posts}
@@ -5143,7 +5422,8 @@ class Settings extends React.Component{
     phone: '',
     pic: '',
     newAvatar: '',
-    balance: 0
+    balance: 0,
+    language: new IndexPath(0)
   }
   componentDidMount(){
     const { params } = this.props.navigation.state
@@ -5187,8 +5467,13 @@ class Settings extends React.Component{
   fetchUser = async() => {
     try {
       var user = await AsyncStorage.getItem('user')
+      var lan = await AsyncStorage.getItem('language')
       if(user !== null) {
         this.setState({user: user})
+      }
+      if(lan !== null) {
+        this.setState({language: new IndexPath(lan == 'en' ? 0 : lan == 'es' ? 1 : lan == 'tr' ? 2 : lan == 'ar' ? 3 : lan == 'hi' ? 4 : 0), lanInW: lan })
+        console.log(this.state.language, lan)
       }
     } catch(e) {
       ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
@@ -5211,7 +5496,8 @@ class Settings extends React.Component{
     }
   }
   switchTheme = async(totheme) => {
-    this.setState({dark: totheme})
+    if(totheme){
+      this.setState({dark: totheme})
     this.props.navigation.setParams({dark: totheme})
     try {
       await AsyncStorage.setItem('dark', totheme.toString())
@@ -5228,6 +5514,9 @@ class Settings extends React.Component{
       ],
       {cancelable: false})
     } catch(e) {
+      ToastAndroid.show('Could Not set Theme', ToastAndroid.SHORT)
+    }
+    }else{
       ToastAndroid.show('Could Not set Theme', ToastAndroid.SHORT)
     }
   }
@@ -5255,6 +5544,29 @@ class Settings extends React.Component{
     try {
       await AsyncStorage.setItem('first', 'false')
       ToastAndroid.show('You will see Tutorial Slides next time you open the App', ToastAndroid.LONG)
+    } catch(e) {
+      ToastAndroid.show('Something Went Wrong', ToastAndroid.SHORT)
+    }
+  }
+  setLanguage = async(to) => {
+    try {
+      console.log(to)
+      to = to.row
+      await AsyncStorage.setItem('language', to == 0 ? 'en' : to == 1 ? 'es' : to == 2 ? 'tr' : to == 3 ? 'ar' : to == 4 ? 'hi' : 'en')
+      Alert.alert('Change App Language', 'Reload the App to apply settings. Translation uses Google Translator API', [
+        {
+          text: 'Cancel',
+          onPress: () => {}
+        },
+        {
+          text: 'Reload',
+          onPress: () => {
+            this.setState({language: new IndexPath(to) })
+            RNRestart.Restart()
+          }
+        },
+      ],
+      {cancelable: false})
     } catch(e) {
       ToastAndroid.show('Something Went Wrong', ToastAndroid.SHORT)
     }
@@ -5382,84 +5694,92 @@ class Settings extends React.Component{
         })
   }
   render(){
+    var lan = this.state.lanInW
     return(
       <ApplicationProvider {...eva} theme={this.state.dark ? eva.dark : eva.light} >
         <Layout style={{flex: 1 }}>
           <ScrollView>
-          <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>Appearance</Text>} />
+          <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>{this.state.lanInW == 'en' ? 'Appearance' : <PowerTranslator text='Appearance' target={this.state.lanInW} />}</Text>} />
+          <Select placeholder="Select App Language"
+          selectedIndex={this.state.lanInW}
+          value={this.state.language.row == '0' ? 'English (en)' : this.state.language.row == '1' ? "Spanish (es)" : this.state.language.row == '2' ?
+          "Turkish (tr)" : this.state.language.row == '3' ? "Arabic (ar)" : this.state.language.row == '4'
+           ? "Hindi (hi)" : 'English (en)'}
+          onSelect={index => this.setLanguage(index)}>
+          <SelectItem title='English'/>
+          <SelectItem title='Spanish'/>
+          <SelectItem title='Turkish'/>
+          <SelectItem title='Arabic'/>
+          <SelectItem title='Hindi'/>
+        </Select>
           <ListItem 
-          title="Dark Theme"
+          title={props => <Text {...props}>{lan == 'en' ? 'Dark Theme' : <PowerTranslator text='Dark Theme' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Toggle checked={this.state.dark} onChange={isChecked => this.switchTheme(isChecked)} status="success">
         </Toggle>} />
         <Divider />
         <ListItem 
-          title="Horizontal Feed"
-          accessoryRight={props => <Toggle checked={this.state.horizontal} onChange={isChecked => this.switchHorizotal(isChecked)} status="success">
-        </Toggle>} />
-        <Divider />
-        <ListItem 
-          title="Replay Tutorial"
+          title={props => <Text {...props}>{lan == 'en' ? 'Replay Tutorial' : <PowerTranslator text='Replay Tutorial' target={this.state.lanInW} />}</Text>}
           accessoryRight={props =>  <Icon name="md-help-circle-outline" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { 
             this.seeTutorial() }} />
-        <Divider />
 
-        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>Account Settings</Text>} />
+        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>{lan == 'en' ? 'Account Settings' : <PowerTranslator text='Account Settings' target={this.state.language} />}</Text>} />
           <ListItem 
-          title="Edit Details"
+          title={props => <Text {...props}>{lan == 'en' ? 'Edit Details' : <PowerTranslator text='Edit Details' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="chevron-forward" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { 
             this.fetchDetails()
             this.setState({editModal: true}) }} />
         <Divider /> 
         <ListItem 
-          title="Change Profile Photo"
+          title={props => <Text {...props}>{lan == 'en' ? 'Change Profile Photo' : <PowerTranslator text='Change Profile Photo' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="chevron-forward" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => { this.setState({changePhoto: true}) 
           this.fetchDetails() }} />
-        <Divider />
-        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>App Settings</Text>} />
+
+        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>{lan == 'en' ? 'App Settings' : <PowerTranslator text='App Settings' target={this.state.lanInW} />}</Text>} />
         <ListItem 
-          title="Push Notifications"
+          title={props => <Text {...props}>{lan == 'en' ? 'Push Notifications' : <PowerTranslator text='Push Notifications' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <EnIcon name="bell" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openSettings()  } />
         <Divider />  
         <ListItem 
-          title="Gems Balance"
+          title={props => <Text {...props}>{lan == 'en' ? 'Gems Balance' : <PowerTranslator text='Gems Balance' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="wallet-outline" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => {
             this.fetchDetails('show')
           } } />
         <Divider />  
         <ListItem 
-          title="Rate App"
+          title={props => <Text {...props}>{lan == 'en' ? 'Rate App' : <PowerTranslator text='Rate App' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="star-outline" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => {
             const inapp = InAppReview.isAvailable()
             if(inapp){
               InAppReview.RequestInAppReview()
+              Linking.openURL("market://details?id=com.meme.lishup")
             }else {
               Linking.openURL("market://details?id=com.meme.lishup")
             }
           } } />  
-        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>Privacy</Text>} />
+        <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>{lan == 'en' ? 'Privacy' : <PowerTranslator text='Privacy' target={this.state.lanInW} />}</Text>} />
         <ListItem 
-          title="Terms and Conditions"
+          title={props => <Text {...props}>{lan == 'en' ? 'Terms & Conditions' : <PowerTranslator text='Terms & Conditions' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="shield-checkmark" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openURL('https://lishup.com/guides.php?id=31')  } />
         <Divider />  
         <ListItem 
-          title="Privacy Policy"
+          title={props => <Text {...props}>{lan == 'en' ? 'Privacy Policy' : <PowerTranslator text='Privacy Policy' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="shield-checkmark" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => Linking.openURL('https://lishup.com/guides.php?id=30')  } />  
         <Divider />  
         <ListItem 
-          title="Contact Us"
+          title={props => <Text {...props}>{lan == 'en' ? 'Contact Us' : <PowerTranslator text='Contact Us' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="ios-help-circle" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
-          onPress={() => Linking.openURL('mailto:support@lishup.com')  } />  
+          onPress={() => Linking.openURL('mailto:meeeme@lishup.com')  } />  
         <Divider />  
         <ListItem 
-          title="Logout"
+          title={props => <Text {...props}>{lan == 'en' ? 'Logout' : <PowerTranslator text='Logout' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="exit-outline" size={30} color={this.state.dark ? '#fff' : 'red'}/>} 
           onPress={() => this.logout()  } />   
            
@@ -5468,7 +5788,7 @@ class Settings extends React.Component{
       <Overlay isVisible={this.state.editModal} onBackdropPress={() => this.setState({editModal: !this.state.editModal, loadingEdit: true})}
          overlayStyle={{width: "80%", height: "70%", backgroundColor: this.state.dark ? '#101426' : '#fff', padding: 20 }}  animationType="slide"> 
         <ScrollView contentContainerStyle={{justifyContent: 'center', alignItems: 'center'}}>
-            <Text category="h4" style={{marginVertical: 20}}>Edit Profile</Text>
+            <Text category="h4" style={{marginVertical: 20}}>{lan == 'en' ? 'Edit Profile' : <PowerTranslator text='Edit Profile' target={this.state.lanInW} />}</Text>
             {this.state.loadingEdit ? <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/dae67631234507.564a1d230a290.gif', priority:'high'}}
                resizeMode="contain" style={{width: "100%", height: 100, marginVertical: 10}} /> : null}
              <Input value={this.state.name} label="Edit your Full Name" onChangeText={text => this.setState({name: text})} 

@@ -1,6 +1,6 @@
 {
   "name": "Meeeme",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -15,6 +15,7 @@
     "@react-native-community/cameraroll": "^4.0.1",
     "@react-native-community/google-signin": "^4.0.3",
     "@react-native-community/masked-view": "^0.1.10",
+    "@react-native-community/netinfo": "react-native-community/react-native-netinfo",
     "@react-native-community/viewpager": "^4.1.6",
     "@react-native-firebase/app": "^8.4.5",
     "@react-native-firebase/auth": "^9.3.0",
@@ -42,6 +43,7 @@
     "react-native-in-app-review": "^2.1.2",
     "react-native-linear-gradient": "^2.5.6",
     "react-native-photo-editor": "^1.0.8",
+    "react-native-power-translator": "^1.1.1",
     "react-native-reanimated": "^1.13.1",
     "react-native-receive-sharing-intent": "^1.0.5",
     "react-native-restart": "^0.0.17",
@@ -49,6 +51,7 @@
     "react-native-screens": "^2.11.0",
     "react-native-snap-carousel": "^3.9.1",
     "react-native-svg": "^12.1.0",
+    "react-native-switch-with-icons": "^2.0.1",
     "react-native-tutorial-slider": "^1.0.2",
     "react-native-vector-icons": "^7.1.0",
     "react-native-view-shot": "^3.1.2",
@@ -56,7 +59,8 @@
     "react-navigation-stack": "^2.8.3",
     "react-navigation-tabs": "^2.9.2",
     "rn-fetch-blob": "^0.12.0",
-    "socket.io-client": "^2.3.1"
+    "socket.io-client": "^2.3.1",
+    "translate-google-api": "^1.0.4"
   },
   "devDependencies": {
     "@babel/core": "^7.8.4",
