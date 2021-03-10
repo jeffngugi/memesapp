@@ -201,8 +201,6 @@ class Authentication extends React.Component{
       ToastAndroid.show('Something Went wrong with Google', ToastAndroid.SHORT)
     }
 
-    auth()
-  .signOut()
         auth().onAuthStateChanged( (user) => {
           if (user) {
              if(Object.keys(this.state.phoneSigninData).length > 0)
@@ -293,7 +291,7 @@ class Authentication extends React.Component{
       try {
         ToastAndroid.show('Sending Secret Code from Alien...', ToastAndroid.SHORT)
           const confirmation = await auth().signInWithPhoneNumber(phoneNumber)
-        this.setState({phoneSigninData: confirmation, toConfirm: true})
+          this.setState({phoneSigninData: confirmation, toConfirm: true})
         setTimeout(() => {
           this.setState({enableResend: true})
         }, 30000)
@@ -1272,12 +1270,13 @@ class HomeScreen extends React.PureComponent{
   formatText(string){
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
-        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')}>
-          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}
+        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')} key={i}>
+          <Text  style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}
             >{v}</Text>
             </TouchableOpacity>
       }   else{
-        return this.state.language == 'en' ? <Text style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}>{v}</Text> : 
+        return this.state.language == 'en' ? <Text 
+        key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}>{v}</Text> : 
         <PowerTranslator text={v} key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}} target={this.state.language} />
       }
     })
@@ -1298,7 +1297,8 @@ class HomeScreen extends React.PureComponent{
     })
   }
   renderPosts = ({item, index}) => (
-    <View style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0, backgroundColor: 'transparent'}} key={index}>
+    <View style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0, backgroundColor: 'transparent'}} 
+        key={index}>
        <View style={{position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 5, zIndex: 5 }}>
         
         </View>
@@ -1357,7 +1357,7 @@ class HomeScreen extends React.PureComponent{
         this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
             <Image
-              source={{uri: uri}}
+              source={{uri: uri}} key={uri}
               style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, alignSelf: 'center',
                marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
                containerStyle={{borderRadius: 10}}
@@ -2761,7 +2761,7 @@ class Create extends React.Component{
       }else{
         this.setState({ photos: r.edges, showPhotosFrom: 'device', images: [r.edges[0].node.image.uri ? r.edges[0].node.image.uri : null], numImages: 1, refreshingPhotos: false })
       }
-      
+      this.fetchGemsBalance()
     })
     .catch((err) => {
        //Error Loading Images
@@ -3109,31 +3109,35 @@ class Create extends React.Component{
         })
   }
   joinContest(){
-    fetch('https://lishup.com/app/joinContest.php', {
-                method: 'POST',
-                headers: {
-                  Accept: 'application/json',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                  user: this.state.user, 
-                  text: this.state.caption,
-                  cost: this.state.contestCost}),
-                  
-              })
-              .then((response) => response.json())
-              .then((responseJson) => {
-                  if(responseJson == 'success'){
-                    ToastAndroid.show('Joined Successfully', ToastAndroid.SHORT)
-                    this.setState({joinedContest: true})
-                  }else{
-                    ToastAndroid.show(responseJson, ToastAndroid.SHORT)
-                  }
-              })
-              .catch((err) => {
-                console.log(err)
-                ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
-              })
+    if(this.state.contestCost > this.state.gems){
+      ToastAndroid.show("Uh! You don't have enough Gems", ToastAndroid.LONG)
+    }else{
+      fetch('https://lishup.com/app/joinContest.php', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          user: this.state.user, 
+          text: this.state.caption,
+          cost: this.state.contestCost}),
+          
+      })
+      .then((response) => response.json())
+      .then((responseJson) => {
+          if(responseJson == 'success'){
+            ToastAndroid.show('Joined Successfully', ToastAndroid.SHORT)
+            this.setState({joinedContest: true})
+          }else{
+            ToastAndroid.show(responseJson, ToastAndroid.SHORT)
+          }
+      })
+      .catch((err) => {
+        console.log(err)
+        ToastAndroid.show('Request Failed. Please Try Again', ToastAndroid.SHORT)
+      })
+    }
   }
   joinedContestYet(){
     if (this.state.contests.some(e => e.isChecked === true)) {
@@ -3568,7 +3572,6 @@ class Create extends React.Component{
       <SwitchWithIcons value={this.state.joinedContest|| this.state.showConfirmation} 
       onValueChange={val => {
         this.fetchContests()
-        this.fetchGemsBalance()
         this.setState({showConfirmation: true})
       }} thumbColor={{true: 'white', false: 'white'}} trackColor={{true: '#35C759', false: '#373737'}}
        style={{alignSelf: 'center', marginTop: 10, transform: [{ scaleX: 1.3 }, { scaleY: 1.3 }] }} />
@@ -3579,13 +3582,15 @@ class Create extends React.Component{
      <Overlay overlayStyle={{alignSelf: 'center', justifyContent: 'center', alignItems: 'center',
            height: '100%', width: '100%', backgroundColor: 'rgba(0, 0, 0, 1)'}} backdropStyle={{backgroundColor: 'rgba(0, 0, 0, 1)', flex: 1}}
             isVisible={this.state.showConfirmation}  onBackdropPress={() => this.setState({showConfirmation: false})}>
-            <NativeText style={{color: 'white', position: 'absolute', top: 10, right: 20}}>
+            <NativeText style={{color: 'white', position: 'absolute', fontSize: 20, top: 10, right: 20}}>
               <NativeImage style={{width: 20, height: 20, borderRadius: 10, marginRight: 10}} source={{uri: this.state.userpic}} />  {this.state.gems} <Svg width="20" height="14" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                    <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
-                   </Svg></NativeText>  
+                   </Svg></NativeText>
+                     <NativeText style={{fontSize: 30, textAlign: 'center'}}>👑</NativeText>
+                     <NativeText style={{color: 'white', fontSize: 30, fontFamily: 'impact', marginBottom: 5,
+                    textAlign: 'center'}}>Choose Contests</NativeText>
             <View style={{alignSelf: 'center', backgroundColor: 'rgba(99, 99, 99, 0.8)', justifyContent: 'center', alignItems: 'center', borderRadius: 20,
            maxHeight: '60%', minHeight: '15%', width: '90%', borderColor: 'white', padding: 0}}>  
-            <NativeText style={{color: 'white', fontSize: 30, fontFamily: 'impact', margin: 5, marginBottom: 5,}}>Choose Contests</NativeText>
             <FlatList data={this.state.contests}
              renderItem={({item, idx}) => (
                <ScrollView style={{ margin: 8}} horizontal={true} contentContainerStyle={{alignItems: 'center', flexDirection: 'row', }}>
