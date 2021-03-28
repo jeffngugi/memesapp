@@ -82,6 +82,7 @@ import messaging from '@react-native-firebase/messaging'
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent'
 import {PowerTranslator, ProviderTypes, TranslatorConfiguration} from 'react-native-power-translator'
 import SwitchWithIcons from "react-native-switch-with-icons"
+import SplashScreen from 'react-native-splash-screen'
 
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
 const itemSkus = Platform.select({
@@ -185,7 +186,8 @@ class Authentication extends React.Component{
     passcode: '',
     passcodetwo: '',
     newAvatar: '',
-    isAvailableUser: false
+    isAvailableUser: false,
+    emailCode: ''
   }
  componentDidMount(){
     StatusBar.setBackgroundColor("rgba(0,0,0,0)")
@@ -222,6 +224,7 @@ class Authentication extends React.Component{
       }) 
     this.fetchUser()  
     this.fetchTheme()
+    
   }
   componentWillUnmount() {
     BackHandler.removeEventListener('hardwareBackPress', () => {
@@ -274,12 +277,16 @@ class Authentication extends React.Component{
           language: lan ? lan : 'en',
           dark: this.state.dark ? 'true' : 'false'
         })
+        SplashScreen.hide()
       }else{
         ToastAndroid.show('No user is logged in', ToastAndroid.SHORT)
+        SplashScreen.hide()
       }
     } catch(e) {
       ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
+      SplashScreen.hide()
     }
+    
   }
   onGoogleButtonPress = async() => {
     const { idToken } = await GoogleSignin.signIn()
@@ -709,7 +716,23 @@ class Authentication extends React.Component{
              <Button onPress={() => {
                 const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
                 if(re.test(String(this.state.email).toLowerCase())){
-                  this.setState({screen: 'register1'})
+
+                  var code = Math.random().toString().substr(2, 6)
+                  this.setState({ secretCode: code }, () => {
+                    fetch('https://lishup.com/app/confirmEmail.php', {
+                        method: 'POST',
+                        headers: {
+                          Accept: 'application/json',
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                          email: this.state.email,
+                          code: this.state.secretCode
+                        }),
+                      })
+                  })
+                  this.setState({screen: 'emailVerify'})
+                  ToastAndroid.show('Check Inbox for Verification Code', ToastAndroid.SHORT)
                 }else{
                   ToastAndroid.show('Your Email is not Valid', ToastAndroid.SHORT)
                 }
@@ -721,6 +744,30 @@ class Authentication extends React.Component{
             </Layout>
           </ApplicationProvider>
           )
+    }else if(this.state.screen == 'emailVerify'){
+      return(
+        <ApplicationProvider
+          {...eva}
+          theme={this.state.dark ? eva.dark : eva.light }> 
+            <Layout style={{flex: 1, paddingTop: 50, alignItems: 'center', backgroundColor: '#FFD362'}}>
+            <Text category="h4" style={{fontWeight: 'bold'}}>Enter Code</Text>
+            <Text category="s1">Still Making Sure you are not a Robot</Text>
+            <Input
+                placeholder='888888'
+                style={{width: "90%", marginVertical: 10, marginTop: 20, borderColor: 'white', backgroundColor: 'white', borderRadius: 20,
+                padding: 20}}
+                textStyle={{fontSize: 30, height: 90, textAlign: 'center'}}
+                maxLength={6}
+                textContentType="oneTimeCode"
+                onChangeText={val => {
+                  if(this.state.secretEmailCode == this.state.code){
+                    this.setState({screen: 'register1'})
+                  }
+                }}
+              />
+          </Layout>
+          </ApplicationProvider>
+      )  
     }else if(this.state.screen == 'register2'){
       return (      
         <ApplicationProvider
@@ -3644,23 +3691,16 @@ class Create extends React.Component{
       return(
       <View style={{flex: 1, backgroundColor: 'black'}}> 
       <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Meme Posted</NativeText>
-      <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
+      <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '95%', alignSelf: 'center',
         marginTop: 0}} resizeMode="contain" /> 
-      <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, flexDirection: 'row', alignItems: 'center',
-      paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
-          onPress={() => this.props.navigation.navigate('Profile', {
-            user: this.state.user,
-            dark: this.state.dark
-          })}>
-            <Icon name="eye" size={25} color="white" />  
-     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>View Post</NativeText></TouchableOpacity>
-     <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, 
-     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
-          onPress={() => {Clipboard.setString(this.state.meme)
-          ToastAndroid.show('Link to Meme Copied', ToastAndroid.SHORT)}}>   
-          <Icon name="copy" size={25} color="white" />            
-     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Copy Link</NativeText></TouchableOpacity>
-    
+     <TouchableOpacity style={{backgroundColor: 'transparent', padding: 10, borderColor: 'white', borderWidth: 1, width: '95%', borderTopLeftRadius: 0, borderTopRightRadius: 0,
+     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center',
+       justifyContent: 'center'}} 
+          onPress={() => Share.share({message: this.state.meme}) }>  
+      <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5, textAlign: 'center', 
+      alignContent: 'center', width: '100%'}}>     
+          <Icon name="ios-link-outline" size={25} color="white" />            
+          Share</NativeText></TouchableOpacity>
      <View style={{flexDirection: 'row', marginTop: 20, alignContent: 'center', alignItems: 'center', justifyContent: 'center'}}>
       <SwitchWithIcons value={this.state.joinedContest|| this.state.showConfirmation} 
       onValueChange={val => {
@@ -3671,6 +3711,12 @@ class Create extends React.Component{
 
        <NativeText style={{color: 'white', fontSize: 25, textAlign:'center', marginLeft: 20, textAlignVertical: 'center'}}>Join Contests</NativeText>
          </View>
+         
+      <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, justifyContent: 'center',
+     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, marginTop: 10, bottom: 0, position: 'absolute', left: 0, right: 0}} 
+          onPress={() => {this.props.navigation.navigate('Home')}}>          
+     <NativeText style={{color: 'white', fontSize: 45, marginLeft: 5, textAlign: 'center', alignContent: 'center',
+     width: '100%'}}>Done</NativeText></TouchableOpacity>
 
      <Overlay overlayStyle={{alignSelf: 'center', justifyContent: 'center', alignItems: 'center',
            height: '100%', width: '100%', backgroundColor: 'rgba(0, 0, 0, 1)'}} backdropStyle={{backgroundColor: 'rgba(0, 0, 0, 1)', flex: 1}}
