@@ -57,6 +57,7 @@ import Gestures from 'react-native-easy-gestures'
 import { DragTextEditor } from 'react-native-drag-text-editor'
 import { SketchCanvas } from '@terrylinla/react-native-sketch-canvas'
 import EnIcon from 'react-native-vector-icons/Entypo'
+import FIcon from 'react-native-vector-icons/Feather'
 import CameraRoll from "@react-native-community/cameraroll"
 
 import { GiftedChat, Bubble, Send, MessageStatusIndicator, Composer, MessageImage, Time } from 'react-native-gifted-chat'
@@ -1350,47 +1351,35 @@ class HomeScreen extends React.PureComponent{
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
         return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')} key={i}>
-          <Text  style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}
+          <Text  style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : '#565656'}}
             >{v}</Text>
             </TouchableOpacity>
       }   else{
         return this.state.language == 'en' ? <Text 
-        key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}}>{v}</Text> : 
-        <PowerTranslator text={v} key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : 'black'}} target={this.state.language} />
+        key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : '#565656'}}>{v}</Text> : 
+        <PowerTranslator text={v} key={i} style={{ elevation: 10, zIndex: 10, color: this.state.dark ? "white" : '#565656'}} target={this.state.language} />
       }
     })
   }
   renderPosts = ({item, index}) => (
-    <View style={{flex: 1, width: "100%", height: Dimensions.get('window').height, margin: 0, padding: 0, backgroundColor: 'transparent'}} 
+    <View style={{ marginVertical: 10, 
+      padding: 10, backgroundColor: 'white', borderRadius: 20, elevation: 5, shadowColor: '#6562FF'}} 
         key={index}>
-       <View style={{position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 5, zIndex: 5 }}>
-        
-        </View>
-        <View style={{width: '100%', height: '100%', justifyContent: 'center', alignSelf: 'center', alignContent: 'center'}}>
         <View>
           <ListItem
-            title={props => <Text style={{ fontSize:18, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : 'black'}}>
+            title={props => <Text style={{ fontSize:15, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : '#A7A7A7', fontWeight: 'bold'}}>
             {item.user}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
               {item.time}</Text> : <PowerTranslator text={item.time} 
             style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}} target={this.state.language}/>}
             </Text>}
             accessoryLeft={evaProps => 
-              <Avatar size='giant' source={{uri: item.userpic}}/>}
-              accessoryRight={evaProps => 
-                <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10, alignItems: 'center'}}
-                onPress={() => this.setState({showAwards: true, currentAwardUser: item.user})}>
-               <Svg width="25" height="25" viewBox="0 0 39 39" fill="none" xmlns="http://www.w3.org/2000/svg">
-               <G><Path 
-               d="M37.7 7.8H31.7759C32.2244 7.0317 32.5 6.1516 32.5 5.2C32.5 0.676 29.2422 0 27.3 0C24.973 0 21.4019 3.1317 19.5 5.9657C17.5981 3.1317 14.027 0 11.7 0C9.7578 0 6.5 0.676 6.5 5.2C6.5 6.1516 6.7756 7.0317 7.2241 7.8H1.3C0.5824 7.8 0 8.3824 0 9.1V16.9C0 17.6176 0.5824 18.2 1.3 18.2H2.6V37.7C2.6 38.4176 3.1824 39 3.9 39H35.1C35.8189 39 36.4 38.4176 36.4 37.7V18.2H37.7C38.4189 18.2 39 17.6176 39 16.9V9.1C39 8.3824 38.4189 7.8 37.7 7.8ZM27.3 2.6C29.4866 2.6 29.9 3.5139 29.9 5.2C29.9 6.6339 28.7339 7.8 27.3 7.8H21.3408C22.6278 5.759 25.8661 2.6 27.3 2.6ZM22.1 15.6H16.9V10.4H19.5H22.1V15.6ZM9.1 5.2C9.1 3.5139 9.5147 2.6 11.7 2.6C13.1339 2.6 16.3722 5.759 17.6579 7.8H11.7C10.2661 7.8 9.1 6.6339 9.1 5.2ZM2.6 10.4H14.3V15.6H2.6V10.4ZM5.2 18.2H14.3V36.4H5.2V18.2ZM16.9 36.4V18.2H22.1V36.4H16.9ZM33.8 36.4H24.7V18.2H33.8V36.4ZM36.4 15.6H24.7V10.4H36.4V15.6Z"
-               fill={this.state.dark ?'white' : 'black'}/></G>
-               </Svg>
-           </TouchableOpacity>}
+              <Avatar size='medium' source={{uri: item.userpic}}/>}
             onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
             style={{backgroundColor: 'transparent', elevation: 5, zIndex: 5}}
+            description={props => 
+            <Text style={{left: 10, elevation: 5, zIndex: 5}}>{item.text ? this.formatText(item.text) : '...'}</Text>}
+            accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={20}/>}
           />
-        </View>
-        <View style={{ width: '90%', alignSelf: 'center', marginBottom: 10}}>
-          <Text>{this.formatText(item.text)}</Text>
         </View>
         <View style={{ borderRadius: 5, padding: 0}}>
         {item.remixUri ? 
@@ -1420,22 +1409,79 @@ class HomeScreen extends React.PureComponent{
         :
         this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
-            <Image
+            <ScaledImage
               source={{uri: uri}} key={uri}
-              style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, alignSelf: 'center',
-               marginBottom: 0, marginLeft: '2.5%', borderTopLeftRadius: 10, borderTopRightRadius: 10  }}
-               containerStyle={{borderRadius: 10}}
+              style={{ alignSelf: 'center',
+               marginBottom: 0, marginLeft: '2.5%', borderRadius: 10, resizeMode: 'contain' }}
+              width={(Dimensions.get('window').width * 100)/95}
               onPress={() => this.props.navigation.navigate('ViewPost', {id: item.id, dark: this.state.dark })}
-              PlaceholderContent={<FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />}
+              loadingIndicatorSource={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif'}}
              />
             ))
           : <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/f1055231234507.564a1d234bfb6.gif', priority: 'high'}} style={{alignSelf: 'center', marginTop: "40%", width: 100, height: 100}} />
 
-         }  
-        <Input placeholder="Type a Comment..." style={{
-           backgroundColor: this.state.dark ? '#393939' : 'white', borderWidth: 0, borderColor: 'transparent', borderRadius: 0, width: '95%', marginBottom: 0,
-            alignSelf: 'center', borderBottomEndRadius: 10, borderBottomStartRadius: 10, elevation: 2
-           }} textStyle={{color: this.state.dark ?'white' : '#ababab'}} placeholderTextColor={this.state.dark ?'white' : '#ababab'} size="large"
+         }
+        <Layout style={{ flexDirection: 'row', backgroundColor: 'transparent', marginVertical: 10}}>
+        <View>
+        <TouchableOpacity style={{ borderRadius: 35, elevation: 5, shadowColor: '#f2f2f2', marginHorizontal: 10,
+          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 7, paddingBottom: 5}}
+          onPress={() => this.lovePosts(item.id, item.user)}> 
+             {this.state.loves[index].isliked ? 
+             <Icon name="heart" size={37} color="#FF007A" style={{
+                    shadowOpacity: 2,
+                    textShadowRadius: 5,
+                    textShadowOffset:{width: -1,height: 1}
+                    }} />
+              :
+              <Icon name="heart-outline" size={37} color="#ABABAB" />}
+        </TouchableOpacity>
+        {this.state.loves[index].loves > 0 ?
+        <Text style={{textAlign: 'center', color: this.state.dark ? "white" : '#ABABAB', }}>{this.state.loves[index].loves}</Text> : null}
+        </View>
+        <View>
+        <TouchableOpacity style={{borderRadius: 5, elevation: 5, shadowColor: '#f2f2f2', marginHorizontal: 10,
+          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12}}
+        onPress={() => {
+          this.state.imageUrls[index] && this.state.imageUrls[index].length
+          ? this.state.imageUrls[index].map((uri) => (
+            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark, user: this.state.user})
+          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
+        }}>
+           <Svg width="30" height="31" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <G filter="url(#filter0_i)">
+            <Path fill-rule="evenodd" clip-rule="evenodd" d="M28.2224 9.757L28.1384 9.75854C27.9372 9.76407 27.7371 9.78532 27.5395 9.82402C26.8557 9.95801 26.2236 10.2854 25.6529 10.6763C25.5441 10.7509 25.4371 10.8281 25.3319 10.9075C24.7196 11.3695 24.1625 11.9024 23.6368 12.4597C23.0073 13.1272 22.4211 13.8346 21.8536 14.5551L21.0575 15.5974L20.682 16.0891C20.1268 16.8341 19.5774 17.5834 19.0232 18.3291C18.6087 18.8848 18.1916 19.4385 17.7646 19.9847L17.4273 20.4028L16.7782 21.2075C16.5259 21.5093 16.2692 21.8074 16.0067 22.1005C15.8026 22.3285 15.5951 22.5534 15.3835 22.7745C14.1349 24.08 12.7337 25.2716 11.115 26.0931C10.9121 26.196 10.7061 26.2929 10.4972 26.3833C10.222 26.5023 9.94186 26.6099 9.65741 26.7048C9.27818 26.8313 8.89139 26.9352 8.49954 27.0145C8.12246 27.0908 7.74076 27.1443 7.35718 27.1742C7.16216 27.1894 6.96686 27.1977 6.7713 27.2015C6.70025 27.2024 6.7004 27.2024 6.62928 27.2027C6.62928 27.2027 3.24749 27.2027 1.63932 27.2027C1.419 27.2027 1.2077 27.1151 1.05191 26.9594C0.896117 26.8036 0.808594 26.5923 0.808594 26.372C0.808594 25.2673 0.808594 23.3259 0.808594 22.2202C0.808595 21.9995 0.89645 21.7878 1.05276 21.632C1.20908 21.4761 1.421 21.3889 1.64174 21.3895C3.33311 21.3967 5.01392 21.4196 6.70913 21.3866C6.76543 21.3851 6.82161 21.3825 6.87781 21.3787C7.04448 21.3664 7.21001 21.3437 7.37359 21.3093C8.06915 21.1632 8.71065 20.8235 9.29004 20.4206C9.42274 20.3284 9.55273 20.2322 9.68031 20.133C10.2978 19.6528 10.8603 19.1041 11.392 18.5315C12.0232 17.8516 12.6124 17.1333 13.1837 16.4027L13.799 15.5911L14.5072 14.6569C14.9612 14.0438 15.4134 13.4294 15.8683 12.817C16.282 12.2618 16.6982 11.7085 17.1242 11.1626L17.4301 10.7836L18.1915 9.84037C18.4439 9.53963 18.7008 9.24268 18.9635 8.95088C19.1678 8.72395 19.3755 8.50011 19.5872 8.28015C20.8376 6.9813 22.2431 5.79893 23.8667 4.9944C24.0704 4.89344 24.2772 4.79867 24.4868 4.71062C24.7631 4.59454 25.0444 4.49019 25.3299 4.39875C25.7105 4.27682 26.0986 4.1779 26.4915 4.104C27.0605 3.99696 27.6378 3.94478 28.2166 3.94251H28.2223V0.619629L35.2835 6.85003L28.2223 13.0804V9.75701L28.2224 9.757ZM28.2224 21.3876V18.0647L35.2835 24.2951L28.2224 30.5255V27.2027H28.2167C27.6367 27.2004 27.0583 27.1484 26.488 27.0417C26.0943 26.968 25.7053 26.8693 25.3236 26.7477C25.0375 26.6564 24.7555 26.5523 24.4783 26.4364C24.2681 26.3485 24.0607 26.2539 23.8563 26.1531C22.2674 25.3692 20.885 24.2243 19.6534 22.9622C19.4398 22.7433 19.2303 22.5204 19.0243 22.2942L18.5104 21.7081L19.0734 21.0081C19.5085 20.4517 19.9335 19.8875 20.3558 19.3213C20.8608 18.6418 21.3619 17.9594 21.8667 17.2798L22.1157 16.9602C22.6662 17.6429 23.2204 18.2913 23.8152 18.9009C24.3183 19.4165 24.8517 19.9072 25.4358 20.3303C26.0625 20.7841 26.764 21.1712 27.5305 21.3206C27.7493 21.3633 27.9711 21.3849 28.1939 21.3875L28.2223 21.3876H28.2224ZM12.741 14.2297L11.7126 13.0008C11.1165 12.3277 10.4854 11.679 9.78491 11.1135C9.65677 11.01 9.52623 10.9095 9.39296 10.8128C9.28852 10.737 9.1824 10.6634 9.07447 10.5926C8.51352 10.2247 7.89381 9.92389 7.22811 9.80926C7.03763 9.77646 6.8451 9.75995 6.65188 9.75768L6.61797 9.75755C6.61797 9.75755 3.24504 9.75755 1.63935 9.75755C1.18056 9.75755 0.808637 9.38562 0.808633 8.92683C0.808633 7.82139 0.808633 5.8781 0.808633 4.77286C0.808631 4.31425 1.18027 3.9424 1.63888 3.94214C3.32505 3.94073 5.01123 3.93619 6.69738 3.94279C6.77091 3.94366 6.84438 3.94509 6.91789 3.94711C7.11243 3.95396 7.30664 3.96534 7.50047 3.98356C7.8817 4.01938 8.26068 4.07872 8.63472 4.16063C9.00076 4.24079 9.362 4.34256 9.71643 4.46411C9.99909 4.56105 10.2774 4.67055 10.5507 4.79139C10.7787 4.89222 11.0032 5.00092 11.224 5.11675C12.7098 5.89629 14.0096 6.98776 15.1757 8.18507C15.3889 8.40393 15.5979 8.62679 15.8034 8.85285L16.3483 9.4752L15.8144 10.1405C15.3806 10.6964 14.9567 11.2598 14.5353 11.8252C14.0312 12.504 13.5308 13.1855 13.0264 13.8641L12.741 14.2297L12.741 14.2297Z" fill="white"/>
+            <Path fill-rule="evenodd" clip-rule="evenodd" d="M28.2224 9.757L28.1384 9.75854C27.9372 9.76407 27.7371 9.78532 27.5395 9.82402C26.8557 9.95801 26.2236 10.2854 25.6529 10.6763C25.5441 10.7509 25.4371 10.8281 25.3319 10.9075C24.7196 11.3695 24.1625 11.9024 23.6368 12.4597C23.0073 13.1272 22.4211 13.8346 21.8536 14.5551L21.0575 15.5974L20.682 16.0891C20.1268 16.8341 19.5774 17.5834 19.0232 18.3291C18.6087 18.8848 18.1916 19.4385 17.7646 19.9847L17.4273 20.4028L16.7782 21.2075C16.5259 21.5093 16.2692 21.8074 16.0067 22.1005C15.8026 22.3285 15.5951 22.5534 15.3835 22.7745C14.1349 24.08 12.7337 25.2716 11.115 26.0931C10.9121 26.196 10.7061 26.2929 10.4972 26.3833C10.222 26.5023 9.94186 26.6099 9.65741 26.7048C9.27818 26.8313 8.89139 26.9352 8.49954 27.0145C8.12246 27.0908 7.74076 27.1443 7.35718 27.1742C7.16216 27.1894 6.96686 27.1977 6.7713 27.2015C6.70025 27.2024 6.7004 27.2024 6.62928 27.2027C6.62928 27.2027 3.24749 27.2027 1.63932 27.2027C1.419 27.2027 1.2077 27.1151 1.05191 26.9594C0.896117 26.8036 0.808594 26.5923 0.808594 26.372C0.808594 25.2673 0.808594 23.3259 0.808594 22.2202C0.808595 21.9995 0.89645 21.7878 1.05276 21.632C1.20908 21.4761 1.421 21.3889 1.64174 21.3895C3.33311 21.3967 5.01392 21.4196 6.70913 21.3866C6.76543 21.3851 6.82161 21.3825 6.87781 21.3787C7.04448 21.3664 7.21001 21.3437 7.37359 21.3093C8.06915 21.1632 8.71065 20.8235 9.29004 20.4206C9.42274 20.3284 9.55273 20.2322 9.68031 20.133C10.2978 19.6528 10.8603 19.1041 11.392 18.5315C12.0232 17.8516 12.6124 17.1333 13.1837 16.4027L13.799 15.5911L14.5072 14.6569C14.9612 14.0438 15.4134 13.4294 15.8683 12.817C16.282 12.2618 16.6982 11.7085 17.1242 11.1626L17.4301 10.7836L18.1915 9.84037C18.4439 9.53963 18.7008 9.24268 18.9635 8.95088C19.1678 8.72395 19.3755 8.50011 19.5872 8.28015C20.8376 6.9813 22.2431 5.79893 23.8667 4.9944C24.0704 4.89344 24.2772 4.79867 24.4868 4.71062C24.7631 4.59454 25.0444 4.49019 25.3299 4.39875C25.7105 4.27682 26.0986 4.1779 26.4915 4.104C27.0605 3.99696 27.6378 3.94478 28.2166 3.94251H28.2223V0.619629L35.2835 6.85003L28.2223 13.0804V9.75701L28.2224 9.757ZM28.2224 21.3876V18.0647L35.2835 24.2951L28.2224 30.5255V27.2027H28.2167C27.6367 27.2004 27.0583 27.1484 26.488 27.0417C26.0943 26.968 25.7053 26.8693 25.3236 26.7477C25.0375 26.6564 24.7555 26.5523 24.4783 26.4364C24.2681 26.3485 24.0607 26.2539 23.8563 26.1531C22.2674 25.3692 20.885 24.2243 19.6534 22.9622C19.4398 22.7433 19.2303 22.5204 19.0243 22.2942L18.5104 21.7081L19.0734 21.0081C19.5085 20.4517 19.9335 19.8875 20.3558 19.3213C20.8608 18.6418 21.3619 17.9594 21.8667 17.2798L22.1157 16.9602C22.6662 17.6429 23.2204 18.2913 23.8152 18.9009C24.3183 19.4165 24.8517 19.9072 25.4358 20.3303C26.0625 20.7841 26.764 21.1712 27.5305 21.3206C27.7493 21.3633 27.9711 21.3849 28.1939 21.3875L28.2223 21.3876H28.2224ZM12.741 14.2297L11.7126 13.0008C11.1165 12.3277 10.4854 11.679 9.78491 11.1135C9.65677 11.01 9.52623 10.9095 9.39296 10.8128C9.28852 10.737 9.1824 10.6634 9.07447 10.5926C8.51352 10.2247 7.89381 9.92389 7.22811 9.80926C7.03763 9.77646 6.8451 9.75995 6.65188 9.75768L6.61797 9.75755C6.61797 9.75755 3.24504 9.75755 1.63935 9.75755C1.18056 9.75755 0.808637 9.38562 0.808633 8.92683C0.808633 7.82139 0.808633 5.8781 0.808633 4.77286C0.808631 4.31425 1.18027 3.9424 1.63888 3.94214C3.32505 3.94073 5.01123 3.93619 6.69738 3.94279C6.77091 3.94366 6.84438 3.94509 6.91789 3.94711C7.11243 3.95396 7.30664 3.96534 7.50047 3.98356C7.8817 4.01938 8.26068 4.07872 8.63472 4.16063C9.00076 4.24079 9.362 4.34256 9.71643 4.46411C9.99909 4.56105 10.2774 4.67055 10.5507 4.79139C10.7787 4.89222 11.0032 5.00092 11.224 5.11675C12.7098 5.89629 14.0096 6.98776 15.1757 8.18507C15.3889 8.40393 15.5979 8.62679 15.8034 8.85285L16.3483 9.4752L15.8144 10.1405C15.3806 10.6964 14.9567 11.2598 14.5353 11.8252C14.0312 12.504 13.5308 13.1855 13.0264 13.8641L12.741 14.2297L12.741 14.2297Z" fill="#00E0FF"/>
+            </G>
+          </Svg>
+        </TouchableOpacity>
+        </View>
+        <View>
+        <TouchableOpacity style={{ marginHorizontal: 10, alignItems: 'center', justifyContent: 'center'}}
+            onPress={() => {
+                this.state.imageUrls[index] && this.state.imageUrls[index].length
+                ? this.state.imageUrls[index].map((uri) => (
+                  Share.share({
+                    message:
+                    'Check the Awesome Meme in Meme app ' + uri,
+                  })
+                )) : null
+              }}>
+           <Icon name="triangle" size={60} color='white' style={{shadowOpacity: 2, textShadowRadius: 10, 
+            textShadowOffset:{width: 1,height: 1}}} />      
+           <FIcon name="share-2" size={25} color="#8000FE" style={{position: 'absolute', alignSelf: 'center', top: 25}} />
+          </TouchableOpacity>
+        </View> 
+        <TouchableOpacity style={{marginHorizontal: 10, alignItems: 'flex-end', position: 'absolute', right: 0, top: 5,
+           alignSelf: 'flex-end'}}
+                onPress={() => this.setState({showAwards: true, currentAwardUser: item.user})}>
+               <Svg width="29" height="29" viewBox="0 0 29 29" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M1.8125 25.375C1.8125 26.3776 2.62246 27.1875 3.625 27.1875H12.6875V18.125H1.8125V25.375ZM16.3125 27.1875H25.375C26.3776 27.1875 27.1875 26.3776 27.1875 25.375V18.125H16.3125V27.1875ZM27.1875 9.0625H24.8029C25.1541 8.37715 25.375 7.61817 25.375 6.79688C25.375 4.04981 23.1377 1.8125 20.3906 1.8125C18.0344 1.8125 16.5108 3.01895 14.5566 5.68106C12.6025 3.01895 11.0789 1.8125 8.72266 1.8125C5.97559 1.8125 3.73828 4.04981 3.73828 6.79688C3.73828 7.61817 3.95352 8.37715 4.31035 9.0625H1.8125C0.809961 9.0625 0 9.87247 0 10.875V15.4063C0 15.9047 0.407813 16.3125 0.906251 16.3125H28.0938C28.5922 16.3125 29 15.9047 29 15.4063V10.875C29 9.87247 28.1901 9.0625 27.1875 9.0625ZM8.717 9.0625C7.46524 9.0625 6.45137 8.04864 6.45137 6.79688C6.45137 5.54512 7.46524 4.53125 8.717 4.53125C9.84415 4.53125 10.6768 4.71817 13.5938 9.0625H8.717ZM20.3906 9.0625H15.5139C18.4252 4.72949 19.2352 4.53125 20.3906 4.53125C21.6424 4.53125 22.6563 5.54512 22.6563 6.79688C22.6563 8.04864 21.6424 9.0625 20.3906 9.0625Z" fill="#ABABAB"/>
+               </Svg>
+           </TouchableOpacity>
+        </Layout>   
+        <Input placeholder="Comment on Meme..." style={{
+           backgroundColor: 'transparent', borderWidth: 0, borderColor: 'transparent', borderRadius: 0, width: '95%', marginBottom: 0,
+            alignSelf: 'center'}} textStyle={{color: this.state.dark ?'white' : '#ababab'}} placeholderTextColor={this.state.dark ?'white' : '#ababab'} size="large"
            accessoryRight={props =>  <TouchableOpacity style={{height: 30, marginHorizontal: 10, flexDirection: 'row'}}
           onPress={() =>  {
             this.setState({showComments: !this.state.showComments, currentPostId: item.id, currentPostAuthor: item.user})
@@ -1451,60 +1497,6 @@ class HomeScreen extends React.PureComponent{
             this.setState({showComments: !this.state.showComments, currentPostId: item.id, currentPostAuthor: item.user})
             this.fetchComments(item.id)
           }} /></View>
-       </View>
-       <View style={{flexDirection: 'row', bottom:"15%", left: 20, marginTop: 30}}>
-       <Layout style={{ alignSelf: 'flex-end', flexDirection: 'row',
-        backgroundColor: 'transparent', borderWidth: 0, position: 'absolute', right: '10%'}}>
-        <TouchableOpacity style={{ borderColor: 'transparent', borderRadius: 30, marginHorizontal: 10}}
-          onPress={() => this.lovePosts(item.id, item.user)}> 
-             {this.state.loves[index].isliked ? <Svg width="35" height="31" viewBox="0 0 391.837 391.837" fill="none" xmlns="http://www.w3.org/2000/svg">
-             <Path fill="#FF007A" d="M285.257,35.528c58.743,0.286,106.294,47.836,106.58,106.58
-             c0,107.624-195.918,214.204-195.918,214.204S0,248.165,0,142.108c0-58.862,47.717-106.58,106.58-106.58l0,0
-             c36.032-0.281,69.718,17.842,89.339,48.065C215.674,53.517,249.273,35.441,285.257,35.528z"/>
-             </Svg> : 
-             <Svg width="40" height="40" viewBox="0 0 35 31" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="black"/>
-                <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="white" />
-                <Path fill-rule="evenodd" clip-rule="evenodd" d="M17.5 24L17.0666 23.6604C7.57162 16.219 5 13.5995 5 9.34448C5 5.84613 7.95777 3 11.5933 3C14.6316 3 16.3489 4.66036 17.5 5.90936C18.6511 4.66036 20.3684 3 23.4067 3C27.0422 3 30 5.84613 30 9.34448C30 13.5995 27.4284 16.219 17.9334 23.6604L17.5 24ZM11.5933 4.32147C8.7153 4.32147 6.3733 6.57507 6.3733 9.34448C6.3733 12.9899 8.75738 15.4268 17.5 22.2949C26.2426 15.4268 28.6267 12.9899 28.6267 9.34448C28.6267 6.57507 26.2847 4.32147 23.4067 4.32147C20.7708 4.32147 19.3953 5.83121 18.2908 7.04469L17.5 7.89938L16.7092 7.04469C15.6047 5.83121 14.2292 4.32147 11.5933 4.32147Z" fill="#FF007A"/>
-                <Path d="M17.3458 24.1968L17.5 24.3176L17.6542 24.1968L18.0876 23.8572L18.0876 23.8572C22.8312 20.1395 25.868 17.6095 27.7165 15.471C29.5785 13.3167 30.25 11.5419 30.25 9.34448C30.25 5.69908 27.1712 2.75 23.4067 2.75C20.4206 2.75 18.665 4.30564 17.5 5.54248C16.335 4.30564 14.5794 2.75 11.5933 2.75C7.82885 2.75 4.75 5.69908 4.75 9.34448C4.75 11.5419 5.4215 13.3167 7.28354 15.471C9.13199 17.6095 12.1688 20.1395 16.9124 23.8572L16.9124 23.8572L17.3458 24.1968ZM18.4743 7.21447L18.4743 7.21448L18.4756 7.21298C19.5795 6.00021 20.8891 4.57147 23.4067 4.57147C26.1558 4.57147 28.3767 6.72212 28.3767 9.34448C28.3767 11.0926 27.813 12.5568 26.154 14.4462C24.5028 16.3268 21.7855 18.6069 17.5 21.9769C13.2145 18.6069 10.4972 16.3268 8.84603 14.4462C7.18704 12.5568 6.6233 11.0926 6.6233 9.34448C6.6233 6.72212 8.84422 4.57147 11.5933 4.57147C14.1109 4.57147 15.4205 6.00021 16.5244 7.21298L16.5244 7.21298L16.5257 7.21447L17.3165 8.06916L17.5 8.26751L17.6835 8.06916L18.4743 7.21447Z" 
-                stroke="#FF007A" stroke-width="0.5"/> 
-              </Svg>}
-          <Text style={{textAlign: 'center', color: this.state.dark ? "white" : 'black', }}>{this.state.loves[index].loves}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10}}
-        onPress={() => {
-          this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark, user: this.state.user})
-          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
-        }}>
-           <Svg width="43" height="40" viewBox="0 0 33 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <G filter="url(#filter0_d)">
-            <Path fill-rule="evenodd" clip-rule="evenodd" d="M23.8796 8.62612L23.8187 8.62724C23.6728 8.63125 23.5277 8.64666 23.3844 8.67472C22.8885 8.77189 22.4301 9.00929 22.0163 9.29278C21.9374 9.34684 21.8598 9.40284 21.7835 9.46045C21.3394 9.79548 20.9355 10.1819 20.5543 10.586C20.0978 11.0701 19.6727 11.5831 19.2611 12.1056L18.6839 12.8614L18.4115 13.218C18.0089 13.7582 17.6105 14.3016 17.2086 14.8423C16.9081 15.2453 16.6056 15.6469 16.2959 16.0429L16.0514 16.3461L15.5807 16.9296C15.3977 17.1485 15.2115 17.3647 15.0212 17.5772C14.8732 17.7425 14.7227 17.9057 14.5693 18.066C13.6638 19.0127 12.6477 19.8768 11.4739 20.4725C11.3267 20.5472 11.1773 20.6174 11.0259 20.683C10.8263 20.7693 10.6231 20.8473 10.4169 20.9161C10.1419 21.0078 9.86138 21.0832 9.57723 21.1407C9.30377 21.1961 9.02698 21.2348 8.74882 21.2565C8.6074 21.2675 8.46577 21.2736 8.32396 21.2763C8.27244 21.2769 8.27255 21.277 8.22097 21.2772C8.22097 21.2772 5.76861 21.2772 4.60241 21.2772C4.44264 21.2772 4.28942 21.2137 4.17644 21.1007C4.06347 20.9877 4 20.8345 4 20.6747C4 19.8737 4 18.4658 4 17.6641C4 17.504 4.06371 17.3505 4.17706 17.2375C4.29042 17.1245 4.4441 17.0612 4.60417 17.0617C5.8307 17.0668 7.04957 17.0835 8.27887 17.0595C8.3197 17.0584 8.36045 17.0565 8.4012 17.0538C8.52206 17.0449 8.6421 17.0284 8.76072 17.0035C9.26512 16.8975 9.73031 16.6512 10.1505 16.359C10.2467 16.2921 10.341 16.2224 10.4335 16.1505C10.8813 15.8022 11.2892 15.4043 11.6747 14.9891C12.1325 14.496 12.5597 13.9752 12.974 13.4454L13.4202 12.8568L13.9338 12.1794C14.263 11.7348 14.5909 11.2892 14.9208 10.8451C15.2208 10.4425 15.5226 10.0413 15.8315 9.64545L16.0534 9.37059L16.6055 8.68658C16.7885 8.46849 16.9748 8.25315 17.1653 8.04155C17.3135 7.87699 17.4641 7.71467 17.6177 7.55516C18.5244 6.61328 19.5436 5.75586 20.721 5.17244C20.8687 5.09923 21.0186 5.0305 21.1707 4.96665C21.371 4.88248 21.575 4.8068 21.782 4.7405C22.0581 4.65208 22.3395 4.58034 22.6244 4.52675C23.037 4.44913 23.4556 4.41129 23.8754 4.40964H23.8796V2L29 6.51808L23.8796 11.0362V8.62613L23.8796 8.62612ZM23.8796 17.0603V14.6506L29.0001 19.1687L23.8796 23.6868V21.2772H23.8755C23.4548 21.2755 23.0354 21.2378 22.6219 21.1604C22.3363 21.107 22.0543 21.0354 21.7775 20.9472C21.57 20.881 21.3655 20.8055 21.1645 20.7215C21.0121 20.6577 20.8617 20.5891 20.7135 20.516C19.5612 19.9476 18.5588 19.1173 17.6656 18.2021C17.5107 18.0434 17.3588 17.8817 17.2095 17.7177L16.8367 17.2927L17.245 16.7851C17.5606 16.3815 17.8688 15.9724 18.175 15.5618C18.5412 15.0691 18.9046 14.5742 19.2707 14.0814L19.4513 13.8496C19.8504 14.3447 20.2523 14.8149 20.6837 15.257C21.0485 15.6309 21.4353 15.9868 21.8589 16.2935C22.3133 16.6226 22.822 16.9033 23.3778 17.0117C23.5365 17.0426 23.6974 17.0583 23.859 17.0602L23.8796 17.0603L23.8796 17.0603ZM12.653 11.8696L11.9073 10.9784C11.4749 10.4903 11.0173 10.0199 10.5093 9.6098C10.4164 9.53478 10.3217 9.46191 10.2251 9.39175C10.1494 9.33676 10.0724 9.28343 9.99415 9.23209C9.58736 8.96532 9.13797 8.74715 8.65522 8.66402C8.51709 8.64024 8.37748 8.62826 8.23736 8.62662L8.21277 8.62652C8.21277 8.62652 5.76683 8.62652 4.60244 8.62652C4.26974 8.62652 4.00003 8.35681 4.00003 8.02411C4.00003 7.22248 4.00003 5.81327 4.00003 5.01179C4.00003 4.67922 4.26953 4.40957 4.6021 4.40938C5.82485 4.40836 7.04761 4.40506 8.27035 4.40985C8.32368 4.41048 8.37695 4.41152 8.43026 4.41298C8.57133 4.41795 8.71217 4.4262 8.85273 4.43941C9.12919 4.46539 9.40401 4.50842 9.67525 4.56782C9.94069 4.62595 10.2027 4.69975 10.4597 4.78789C10.6646 4.85819 10.8665 4.93759 11.0647 5.02522C11.23 5.09834 11.3928 5.17717 11.5529 5.26117C12.6304 5.82646 13.573 6.61796 14.4186 7.48621C14.5731 7.64492 14.7247 7.80653 14.8737 7.97046L15.2689 8.42177L14.8818 8.9042C14.5671 9.30731 14.2597 9.71593 13.9542 10.1259C13.5886 10.6181 13.2257 11.1124 12.8599 11.6045L12.653 11.8696L12.653 11.8696Z" fill="white"/>
-            <Path fill-rule="evenodd" clip-rule="evenodd" d="M23.8796 8.62612L23.8187 8.62724C23.6728 8.63125 23.5277 8.64666 23.3844 8.67472C22.8885 8.77189 22.4301 9.00929 22.0163 9.29278C21.9374 9.34684 21.8598 9.40284 21.7835 9.46045C21.3394 9.79548 20.9355 10.1819 20.5543 10.586C20.0978 11.0701 19.6727 11.5831 19.2611 12.1056L18.6839 12.8614L18.4115 13.218C18.0089 13.7582 17.6105 14.3016 17.2086 14.8423C16.9081 15.2453 16.6056 15.6469 16.2959 16.0429L16.0514 16.3461L15.5807 16.9296C15.3977 17.1485 15.2115 17.3647 15.0212 17.5772C14.8732 17.7425 14.7227 17.9057 14.5693 18.066C13.6638 19.0127 12.6477 19.8768 11.4739 20.4725C11.3267 20.5472 11.1773 20.6174 11.0259 20.683C10.8263 20.7693 10.6231 20.8473 10.4169 20.9161C10.1419 21.0078 9.86138 21.0832 9.57723 21.1407C9.30377 21.1961 9.02698 21.2348 8.74882 21.2565C8.6074 21.2675 8.46577 21.2736 8.32396 21.2763C8.27244 21.2769 8.27255 21.277 8.22097 21.2772C8.22097 21.2772 5.76861 21.2772 4.60241 21.2772C4.44264 21.2772 4.28942 21.2137 4.17644 21.1007C4.06347 20.9877 4 20.8345 4 20.6747C4 19.8737 4 18.4658 4 17.6641C4 17.504 4.06371 17.3505 4.17706 17.2375C4.29042 17.1245 4.4441 17.0612 4.60417 17.0617C5.8307 17.0668 7.04957 17.0835 8.27887 17.0595C8.3197 17.0584 8.36045 17.0565 8.4012 17.0538C8.52206 17.0449 8.6421 17.0284 8.76072 17.0035C9.26512 16.8975 9.73031 16.6512 10.1505 16.359C10.2467 16.2921 10.341 16.2224 10.4335 16.1505C10.8813 15.8022 11.2892 15.4043 11.6747 14.9891C12.1325 14.496 12.5597 13.9752 12.974 13.4454L13.4202 12.8568L13.9338 12.1794C14.263 11.7348 14.5909 11.2892 14.9208 10.8451C15.2208 10.4425 15.5226 10.0413 15.8315 9.64545L16.0534 9.37059L16.6055 8.68658C16.7885 8.46849 16.9748 8.25315 17.1653 8.04155C17.3135 7.87699 17.4641 7.71467 17.6177 7.55516C18.5244 6.61328 19.5436 5.75586 20.721 5.17244C20.8687 5.09923 21.0186 5.0305 21.1707 4.96665C21.371 4.88248 21.575 4.8068 21.782 4.7405C22.0581 4.65208 22.3395 4.58034 22.6244 4.52675C23.037 4.44913 23.4556 4.41129 23.8754 4.40964H23.8796V2L29 6.51808L23.8796 11.0362V8.62613L23.8796 8.62612ZM23.8796 17.0603V14.6506L29.0001 19.1687L23.8796 23.6868V21.2772H23.8755C23.4548 21.2755 23.0354 21.2378 22.6219 21.1604C22.3363 21.107 22.0543 21.0354 21.7775 20.9472C21.57 20.881 21.3655 20.8055 21.1645 20.7215C21.0121 20.6577 20.8617 20.5891 20.7135 20.516C19.5612 19.9476 18.5588 19.1173 17.6656 18.2021C17.5107 18.0434 17.3588 17.8817 17.2095 17.7177L16.8367 17.2927L17.245 16.7851C17.5606 16.3815 17.8688 15.9724 18.175 15.5618C18.5412 15.0691 18.9046 14.5742 19.2707 14.0814L19.4513 13.8496C19.8504 14.3447 20.2523 14.8149 20.6837 15.257C21.0485 15.6309 21.4353 15.9868 21.8589 16.2935C22.3133 16.6226 22.822 16.9033 23.3778 17.0117C23.5365 17.0426 23.6974 17.0583 23.859 17.0602L23.8796 17.0603L23.8796 17.0603ZM12.653 11.8696L11.9073 10.9784C11.4749 10.4903 11.0173 10.0199 10.5093 9.6098C10.4164 9.53478 10.3217 9.46191 10.2251 9.39175C10.1494 9.33676 10.0724 9.28343 9.99415 9.23209C9.58736 8.96532 9.13797 8.74715 8.65522 8.66402C8.51709 8.64024 8.37748 8.62826 8.23736 8.62662L8.21277 8.62652C8.21277 8.62652 5.76683 8.62652 4.60244 8.62652C4.26974 8.62652 4.00003 8.35681 4.00003 8.02411C4.00003 7.22248 4.00003 5.81327 4.00003 5.01179C4.00003 4.67922 4.26953 4.40957 4.6021 4.40938C5.82485 4.40836 7.04761 4.40506 8.27035 4.40985C8.32368 4.41048 8.37695 4.41152 8.43026 4.41298C8.57133 4.41795 8.71217 4.4262 8.85273 4.43941C9.12919 4.46539 9.40401 4.50842 9.67525 4.56782C9.94069 4.62595 10.2027 4.69975 10.4597 4.78789C10.6646 4.85819 10.8665 4.93759 11.0647 5.02522C11.23 5.09834 11.3928 5.17717 11.5529 5.26117C12.6304 5.82646 13.573 6.61796 14.4186 7.48621C14.5731 7.64492 14.7247 7.80653 14.8737 7.97046L15.2689 8.42177L14.8818 8.9042C14.5671 9.30731 14.2597 9.71593 13.9542 10.1259C13.5886 10.6181 13.2257 11.1124 12.8599 11.6045L12.653 11.8696L12.653 11.8696Z" fill="#00E0FF"/>
-            </G>
-            </Svg>
-        </TouchableOpacity>
-        <TouchableOpacity style={{backgroundColor: 'transparent', borderColor: 'transparent', marginHorizontal: 10}}
-        onPress={() => {
-          this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-            Share.share({
-              message:
-              'Check the Awesome Meme in Meme app ' + uri,
-            })
-          )) : null
-        }}>
-           <Svg width="40" height="37" viewBox="0 0 35 33" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <G filter="url(#filter0_d)">
-            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="white" stroke-width="2"/>
-            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="#FFF500" stroke-width="2"/>
-            <Path d="M19.6712 10.335V5L29.0073 14.3362L19.6712 23.6723V18.204C13.0025 18.204 8.33437 20.338 5.00002 25.0061C6.33376 18.3374 10.335 11.6687 19.6712 10.335Z" stroke="#8000FF" stroke-width="2"/>
-            </G>
-            </Svg>
-        </TouchableOpacity>
-        </Layout>
-        </View>
         </View>
   )
     renderComments = ({item, idx}) => (
@@ -1673,30 +1665,25 @@ class HomeScreen extends React.PureComponent{
      
         <Layout level="2" style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
         <View style={{flexDirection:'row', zIndex: 20,
-              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, position: 'absolute', paddingRight: 15, paddingLeft: 15,
+              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, paddingRight: 15, paddingLeft: 15,
                 left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0)'}}>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: this.state.user, dark: this.state.dark})}>
-            <Svg width="39" height="39" viewBox="0 0 39 39" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <Path d="M19.1999 9.80312L19.2009 9.80313C20.2913 9.80527 21.3364 10.2394 22.1074 11.0104C22.8784 11.7814 23.3125 12.8265 23.3147 13.9169V13.9179C23.3147 14.7317 23.0733 15.5272 22.6212 16.2039C22.1691 16.8806 21.5264 17.408 20.7745 17.7194C20.4942 17.8355 20.2034 17.9197 19.9075 17.9713C20.1645 17.9955 20.4209 18.0328 20.6757 18.0835C22.143 18.3753 23.4908 19.0956 24.5488 20.1533C25.2536 20.8543 25.8124 21.6881 26.1929 22.6065C26.5735 23.5251 26.7681 24.5101 26.7655 25.5044L26.7642 26.0031H26.2655H12.1343H11.6342L11.6343 25.5031C11.6344 24.0068 12.0782 22.5442 12.9095 21.3002C13.7409 20.0562 14.9224 19.0866 16.3048 18.514C17.0066 18.2233 17.7442 18.0416 18.4924 17.9713C18.4606 17.9658 18.4288 17.9599 18.3972 17.9536C17.599 17.7948 16.8658 17.4029 16.2903 16.8274C15.7149 16.252 15.323 15.5188 15.1642 14.7206C15.0054 13.9224 15.0869 13.0951 15.3984 12.3432C15.7098 11.5914 16.2372 10.9487 16.9139 10.4966C17.5905 10.0445 18.3861 9.80312 19.1999 9.80312ZM4.4999 18.2C4.4999 26.3183 11.0816 32.9 19.1999 32.9C27.3182 32.9 33.8999 26.3183 33.8999 18.2C33.8999 10.0817 27.3182 3.5 19.1999 3.5C11.0816 3.5 4.4999 10.0817 4.4999 18.2Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             </Svg>
+            <FIcon name='user' size={35} color={this.state.dark ? "white" : "black"} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
-              <Icon name='ios-trophy-outline' size={35} color={this.state.dark ? "white" : "black"} />
+              <FIcon name='search' size={35} color={this.state.dark ? "white" : "black"} />
             </TouchableOpacity> 
 
             <TouchableOpacity onPress={() => this.fetch('', 'date_time')} >
-             <Icon name='ios-home' size={35} color={this.state.dark ? "white" : "#000"} />
+             <FIcon name='home' size={35} color={this.state.dark ? "white" : "#000"} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Notifications', {user: this.state.user, dark: this.state.dark})}>
-             <Icon name='notifications-outline' size={35} color={this.state.dark ? "white" : "black"} />
+             <FIcon name='bell' size={35} color={this.state.dark ? "white" : "black"} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Conversations', {user: this.state.user, dark: this.state.dark})}
             >
-                <Svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 25 25">
-              <Path d="M3.12775 18.8879C3.19186 18.6519 3.05016 18.3238 2.91492 18.0873C2.87281 18.0168 2.82714 17.9484 2.77807 17.8825C1.61819 16.1235 0.999979 14.0628 1.00005 11.9558C0.981195 5.90787 5.99628 1 12.1978 1C17.6062 1 22.1207 4.74677 23.1757 9.72037C23.3338 10.4578 23.4136 11.2098 23.4138 11.9639C23.4138 18.0205 18.5922 23.0054 12.3907 23.0054C11.4047 23.0054 10.0739 22.7575 9.34811 22.5544C8.62236 22.3513 7.89768 22.0819 7.71072 22.0097C7.51951 21.9362 7.31643 21.8984 7.11158 21.8982C6.88783 21.8973 6.66623 21.9419 6.46018 22.0291L2.80555 23.3481C2.72548 23.3826 2.64065 23.4047 2.55393 23.4138C2.4855 23.4136 2.4178 23.3998 2.35473 23.3732C2.29167 23.3467 2.2345 23.3079 2.18654 23.2591C2.13858 23.2103 2.10079 23.1524 2.07534 23.0889C2.0499 23.0254 2.03731 22.9574 2.03831 22.889C2.0428 22.8289 2.05364 22.7695 2.07064 22.7117L3.12775 18.8879Z" 
-              stroke={this.state.dark ? "white" : "black"} stroke-width="4" stroke-miterlimit="10" stroke-linecap="round" fillOpacity={0.6}></Path>
-              </Svg>
+               <FIcon name='message-circle' size={35} color={this.state.dark ? "white" : "black"} />
             </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
@@ -1726,32 +1713,30 @@ class HomeScreen extends React.PureComponent{
       return(
         <ApplicationProvider {...eva}
     theme={this.state.dark ? eva.dark : eva.light}>
-       <Layout level="2" style={{  flex: 1, margin: 0, padding: 0  }}>
+       <Layout level="2" style={{  flex: 1, margin: 0, padding: 0, backgroundColor: '#F4F4F4'  }}>
        <View style={{flexDirection:'row', zIndex: 20,
-              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, position: 'absolute', paddingRight: 15, paddingLeft: 15,
+              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, paddingRight: 15, paddingLeft: 15,
                 left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0)'}}>
              <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: this.state.user, dark: this.state.dark})}>
-             <Svg width="39" height="39" viewBox="0 0 39 39" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <Path d="M19.1999 9.80312L19.2009 9.80313C20.2913 9.80527 21.3364 10.2394 22.1074 11.0104C22.8784 11.7814 23.3125 12.8265 23.3147 13.9169V13.9179C23.3147 14.7317 23.0733 15.5272 22.6212 16.2039C22.1691 16.8806 21.5264 17.408 20.7745 17.7194C20.4942 17.8355 20.2034 17.9197 19.9075 17.9713C20.1645 17.9955 20.4209 18.0328 20.6757 18.0835C22.143 18.3753 23.4908 19.0956 24.5488 20.1533C25.2536 20.8543 25.8124 21.6881 26.1929 22.6065C26.5735 23.5251 26.7681 24.5101 26.7655 25.5044L26.7642 26.0031H26.2655H12.1343H11.6342L11.6343 25.5031C11.6344 24.0068 12.0782 22.5442 12.9095 21.3002C13.7409 20.0562 14.9224 19.0866 16.3048 18.514C17.0066 18.2233 17.7442 18.0416 18.4924 17.9713C18.4606 17.9658 18.4288 17.9599 18.3972 17.9536C17.599 17.7948 16.8658 17.4029 16.2903 16.8274C15.7149 16.252 15.323 15.5188 15.1642 14.7206C15.0054 13.9224 15.0869 13.0951 15.3984 12.3432C15.7098 11.5914 16.2372 10.9487 16.9139 10.4966C17.5905 10.0445 18.3861 9.80312 19.1999 9.80312ZM4.4999 18.2C4.4999 26.3183 11.0816 32.9 19.1999 32.9C27.3182 32.9 33.8999 26.3183 33.8999 18.2C33.8999 10.0817 27.3182 3.5 19.1999 3.5C11.0816 3.5 4.4999 10.0817 4.4999 18.2Z" stroke={this.state.dark ? "white" : "black"} stroke-opacity="0.36"/>
-             </Svg>
-             </TouchableOpacity>
-             <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
-              <Icon name='ios-trophy-outline' size={35} color={this.state.dark ? "white" : "black"} />
+            <FIcon name='user' size={35} color={this.state.dark ? "white" : "black"} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
+              <FIcon name='search' size={35} color={this.state.dark ? "white" : "black"} />
             </TouchableOpacity> 
 
             <TouchableOpacity onPress={() => this.fetch('', 'date_time')} >
-             <Icon name='ios-home' size={35} color={this.state.dark ? "white" : "#000"} />
+             <FIcon name='home' size={35} color={this.state.dark ? "white" : "#000"} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Notifications', {user: this.state.user, dark: this.state.dark})}>
-             <Icon name='notifications-outline' size={35} color={this.state.dark ? "white" : "black"} />
+            <View style={styles.badgeIconView}>
+             <FIcon name='bell' size={35} color={this.state.dark ? "white" : "black"} />
+              {Object.keys(this.state.data).length > 0 ? this.state.data[0].unreadN > 0 ? <Text style={styles.badge}> {this.state.data[0].unreadN} </Text> : null : null}
+            </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => this.props.navigation.navigate('Conversations', {user: this.state.user, dark: this.state.dark})}>
             <View style={styles.badgeIconView}>
-             <Svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 25 25">
-              <Path d="M3.12775 18.8879C3.19186 18.6519 3.05016 18.3238 2.91492 18.0873C2.87281 18.0168 2.82714 17.9484 2.77807 17.8825C1.61819 16.1235 0.999979 14.0628 1.00005 11.9558C0.981195 5.90787 5.99628 1 12.1978 1C17.6062 1 22.1207 4.74677 23.1757 9.72037C23.3338 10.4578 23.4136 11.2098 23.4138 11.9639C23.4138 18.0205 18.5922 23.0054 12.3907 23.0054C11.4047 23.0054 10.0739 22.7575 9.34811 22.5544C8.62236 22.3513 7.89768 22.0819 7.71072 22.0097C7.51951 21.9362 7.31643 21.8984 7.11158 21.8982C6.88783 21.8973 6.66623 21.9419 6.46018 22.0291L2.80555 23.3481C2.72548 23.3826 2.64065 23.4047 2.55393 23.4138C2.4855 23.4136 2.4178 23.3998 2.35473 23.3732C2.29167 23.3467 2.2345 23.3079 2.18654 23.2591C2.13858 23.2103 2.10079 23.1524 2.07534 23.0889C2.0499 23.0254 2.03731 22.9574 2.03831 22.889C2.0428 22.8289 2.05364 22.7695 2.07064 22.7117L3.12775 18.8879Z" 
-              stroke={this.state.dark ? "white" : "black"} stroke-width="4" stroke-miterlimit="10" stroke-linecap="round" fillOpacity={0.6}></Path>
-              </Svg>
+            <FIcon name='message-circle' size={35} color={this.state.dark ? "white" : "black"} />
               {Object.keys(this.state.data).length > 0 ? this.state.data[0].unreadM > 0 ? <Text style={styles.badge}> {this.state.data[0].unreadM} </Text> : null : null}
             </View>
             </TouchableOpacity>
@@ -1766,10 +1751,6 @@ class HomeScreen extends React.PureComponent{
               ref={(c) => { this._carousel = c; }}
               data={this.state.data}
               renderItem={this.renderPosts}
-              snapToAlignment={'center'}
-              snapToInterval={Dimensions.get('window').height}
-              decelerationRate={'normal'}
-              pagingEnabled
               extraData={this.state}
               showsVerticalScrollIndicator={false}
               showsHorizontalScrollIndicator={false}
@@ -1824,21 +1805,12 @@ class HomeScreen extends React.PureComponent{
 
         <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
         style={{position: 'absolute', zIndex: 100, elevation: 100, bottom: 20, left: 20}}>
-        <Svg width="135" height="60" viewBox="0 0 135 63" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <G filter="url(#filter0_d)">
-          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="white"/>
-          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="#FF00A8"/>
-          <Rect x="4" width="127" height="56" rx="28" fill="#FF00A8"/>
-          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="black"/>
-          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="white"/>
-          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="black"/>
-          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="white"/>
-          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="black"/>
-          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="white"/>
-          </G>
+        <Svg width="80" height="80" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <Circle cx="65" cy="69" r="51.597" fill="#FF00F5" stroke="#FF00F5" stroke-width="0.806011"/>
+          <Path d="M64.9712 88.5652C63.2247 88.5652 61.9148 87.1461 61.9148 85.5088V52.4338C61.9148 50.6873 63.3339 49.3774 64.9712 49.3774C66.6086 49.3774 68.0277 50.7964 68.0277 52.4338V85.5088C68.0277 87.1461 66.7178 88.5652 64.9712 88.5652Z" fill="#FFF"/>
+          <Path d="M81.522 71.8629H48.5562C46.8097 71.8629 45.4998 70.4438 45.4998 68.8064C45.4998 67.1691 46.9188 65.75 48.5562 65.75H81.6311C83.3776 65.75 84.6875 67.1691 84.6875 68.8064C84.6875 70.4438 83.2685 71.8629 81.522 71.8629Z" fill="#FFF"/>
           </Svg>
         </TouchableOpacity>
-
         <Overlay
         animationType="slide"
         transparent={true}
@@ -3455,8 +3427,12 @@ class Create extends React.Component{
               }}
               PlaceHolder={item.text}
               FontSize={item.FontSize}
-              centerPress={() => this.setState({showTextTools: true, editingTextID: item.id, currentTextColor: item.FontColor,
-               currentBGColor: item.BackgroundColor })}
+              centerPress={() => {
+                var copy = this.state.texts
+                copy[idx].text = ''
+                this.setState({showTextTools: true, editingTextID: item.id, currentTextColor: item.FontColor,
+               currentBGColor: item.BackgroundColor, texts: copy })
+              }}
               FontFamily={item.FontFamily}
               style={{borderRadius: 8, zIndex: 200 }}
               isStroke={item.FontFamily == 'impact' ? true : false}
@@ -3611,7 +3587,12 @@ class Create extends React.Component{
 
          <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, borderRadius: 15, top: 30, right: 20,
            position: 'absolute', elevation: 10}} 
-          onPress={() => this.setState({showTextTools: false})}><NativeText style={{color: 'white', fontSize: 25}}>Done</NativeText></TouchableOpacity>
+          onPress={() => {
+            if(this.getTextDetails(null, 'text') == ''){
+              this.changeText('Add Text')
+            }
+            this.setState({showTextTools: false})
+          }}><NativeText style={{color: 'white', fontSize: 25}}>Done</NativeText></TouchableOpacity>
       <View style={{ top: 100, height: '80%', alignSelf: 'flex-end'}}> 
         {this.getTextDetails('impact') ? null : <NativeText style={{backgroundColor: this.state.enableLabel ? '#000' : 'transparent', color: this.state.enableLabel ? '#fff' : 'white', 
         borderRadius: 15, marginRight: 8, padding: 10, paddingVertical: 5, fontSize: 25, alignSelf: 'flex-end' }}
@@ -3699,8 +3680,7 @@ class Create extends React.Component{
           onPress={() => Share.share({message: this.state.meme}) }>  
       <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5, textAlign: 'center', 
       alignContent: 'center', width: '100%'}}>     
-          <Icon name="ios-link-outline" size={25} color="white" />            
-          Share</NativeText></TouchableOpacity>
+          <Icon name="ios-link-outline" size={25} color="white" style={{marginRight: 30}} />  Share</NativeText></TouchableOpacity>
      <View style={{flexDirection: 'row', marginTop: 20, alignContent: 'center', alignItems: 'center', justifyContent: 'center'}}>
       <SwitchWithIcons value={this.state.joinedContest|| this.state.showConfirmation} 
       onValueChange={val => {
@@ -3758,7 +3738,9 @@ class Create extends React.Component{
                 {this.state.contestCost > 0 ? this.state.contestCost : null} <Svg width={this.state.contestCost > 0 ? "25" : "0"} height="19" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#F10065" stroke="#fff" stroke-width="0.91965" />
                 </Svg></NativeText> : null}</TouchableOpacity>
-          </View></Overlay>
+          </View>
+          <EnIcon name="cross" size={100} color="white" style={{marginTop: 20, alignSelf: 'center'}} onPress={() => this.setState({showConfirmation: false})} />
+          </Overlay>
     </View>
       )   
     }

@@ -1,7 +1,7 @@
 import React, { Component, } from "react"
-import {Dimensions} from 'react-native'
-import { Image } from "react-native-elements"
+import {Dimensions, Image} from 'react-native'
 import PropTypes from 'prop-types'
+import { TouchableOpacity } from "react-native-gesture-handler";
 
     export default class ScaledImage extends Component {
         state = {}
@@ -13,6 +13,7 @@ import PropTypes from 'prop-types'
 
         render() {
             return (
+               <TouchableOpacity onPress={this.props.onPress} style={{elevation: 5}}>
                 <Image
                     source={this.state.source}
                     onLoad={(value) => {
@@ -32,11 +33,12 @@ import PropTypes from 'prop-types'
                         }
 
                     }}
-                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,  borderRadius: 20, marginVertical: 10, resizeMode:"contain",
+                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100, resizeMode:"contain",
                         alignSelf: 'center' }, this.props.style]}
-                    onPress={this.props.onPress}
+                    containerStyle={{marginHorizontal: 10}}
+                    loadingIndicatorSource={this.props.loadingIndicatorSource}
                     onLongPress={this.props.onLongPress}
-                />
+                /></TouchableOpacity>
                 
             );
         }
