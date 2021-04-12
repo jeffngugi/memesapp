@@ -14,13 +14,13 @@ import {
   Alert,
   Clipboard,
   Easing, Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText,
-  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker, Switch
+  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker, Switch, Animated
 } from 'react-native'
 import NetInfo from '@react-native-community/netinfo'
 import 'react-native-gesture-handler'
 import { createAppContainer, StackActions, StackNavigator, NavigationActions } from 'react-navigation'
 import { createStackNavigator } from 'react-navigation-stack'
-import { createBottomTabNavigator } from 'react-navigation-tabs'
+import { createMaterialTopTabNavigator } from 'react-navigation-tabs'
 
 import * as eva from '@eva-design/eva'
 import { ApplicationProvider, Layout, Button, ButtonGroup,
@@ -159,8 +159,8 @@ const slides = [
     colors: ['#fc4a1a', '#f7b733'],
   },
 ]
-
-
+var notifyCount = 0
+var msgCount = 0
 
 class Authentication extends React.Component{
   static navigationOptions = ({navigation}) => {
@@ -990,12 +990,17 @@ class Authentication extends React.Component{
 }
 }
 class HomeScreen extends React.PureComponent{
-  static navigationOptions = ({navigation}) => {
-    const { params = {} } = navigation.state
+  static navigationOptions = ({navigation,screenProps}) => {
     return {
-      header: false
-    };
-  };
+      tabBarVisible: true,
+      tabBarIcon: ({ tintColor }) => (
+        <FIcon name="home" size={35} color={tintColor ? tintColor : 'black'} />
+      ),
+      tabBarLabel: ({ focused, tintColor }) => {
+        return null
+      }
+    }
+  }
 
   constructor(props){
     super(props)
@@ -1027,7 +1032,8 @@ class HomeScreen extends React.PureComponent{
       language: 'en',
       isOffline: false,
       replyingTo: 0,
-      replyingPerson: ''
+      replyingPerson: '',
+      memeBtnvisible: true
     }
     this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
     this.socket.on('connect', function (data) {
@@ -1038,6 +1044,8 @@ class HomeScreen extends React.PureComponent{
     const { params } = this.props.navigation.state
     const user = params ? params.user : null
     const lan = params ? params.language : null
+
+    this.props.navigation.setParams({notifyCount: '0'})
 
     this.fetch('', 'date_time')
     messaging()
@@ -1174,6 +1182,8 @@ class HomeScreen extends React.PureComponent{
     const lan = params ? params.language : null
     const theme = params ? params.dark : null
 
+    this.props.navigation.setParams({showOr: true})
+
     if(theme == 'true'){
       this.setState({dark: true})
     }
@@ -1228,6 +1238,10 @@ class HomeScreen extends React.PureComponent{
             loading: false,
             isOffline: false
          })
+         //this.props.navigation.setParams({notifyCount: this.state.data[0].unreadN})
+         notifyCount = parseInt(this.state.data[0].unreadN)
+         msgCount = parseInt(this.state.data[0].unreadM)
+         console.log('Unread notifications', notifyCount)
          Promise.all(
           responseJson.map(({ images }) => this.fetchImage(images))
         ).then((imageUrls) => {this.setState({ imageUrls })
@@ -1350,8 +1364,8 @@ class HomeScreen extends React.PureComponent{
   formatText(string){
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
-        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')} key={i}>
-          <Text  style={{fontWeight: 'bold', elevation: 10, zIndex: 10, color: this.state.dark ? "white" : '#565656'}}
+        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')} style={{elevation: 10, zIndex: 10,}} key={i}>
+          <Text  style={{fontWeight: 'bold', color: this.state.dark ? "white" : '#565656'}}
             >{v}</Text>
             </TouchableOpacity>
       }   else{
@@ -1363,7 +1377,7 @@ class HomeScreen extends React.PureComponent{
   }
   renderPosts = ({item, index}) => (
     <View style={{ marginVertical: 10, 
-      padding: 10, backgroundColor: 'white', borderRadius: 20, elevation: 5, shadowColor: '#6562FF'}} 
+      padding: 10, backgroundColor: 'white', borderRadius: 20}} 
         key={index}>
         <View>
           <ListItem
@@ -1377,7 +1391,18 @@ class HomeScreen extends React.PureComponent{
             onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
             style={{backgroundColor: 'transparent', elevation: 5, zIndex: 5}}
             description={props => 
-            <Text style={{left: 10, elevation: 5, zIndex: 5}}>{item.text ? this.formatText(item.text) : '...'}</Text>}
+            <Text style={{left: 10, elevation: 5, zIndex: 5}}>{item.reUser ? 
+              <View style={{flexDirection: 'row'}}>
+              <Svg width="20" height="18" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginTop: 5}}>
+              <G filter="url(#filter0_i)">
+              <Path fill-rule="evenodd" clip-rule="evenodd" d="M28.2224 9.757L28.1384 9.75854C27.9372 9.76407 27.7371 9.78532 27.5395 9.82402C26.8557 9.95801 26.2236 10.2854 25.6529 10.6763C25.5441 10.7509 25.4371 10.8281 25.3319 10.9075C24.7196 11.3695 24.1625 11.9024 23.6368 12.4597C23.0073 13.1272 22.4211 13.8346 21.8536 14.5551L21.0575 15.5974L20.682 16.0891C20.1268 16.8341 19.5774 17.5834 19.0232 18.3291C18.6087 18.8848 18.1916 19.4385 17.7646 19.9847L17.4273 20.4028L16.7782 21.2075C16.5259 21.5093 16.2692 21.8074 16.0067 22.1005C15.8026 22.3285 15.5951 22.5534 15.3835 22.7745C14.1349 24.08 12.7337 25.2716 11.115 26.0931C10.9121 26.196 10.7061 26.2929 10.4972 26.3833C10.222 26.5023 9.94186 26.6099 9.65741 26.7048C9.27818 26.8313 8.89139 26.9352 8.49954 27.0145C8.12246 27.0908 7.74076 27.1443 7.35718 27.1742C7.16216 27.1894 6.96686 27.1977 6.7713 27.2015C6.70025 27.2024 6.7004 27.2024 6.62928 27.2027C6.62928 27.2027 3.24749 27.2027 1.63932 27.2027C1.419 27.2027 1.2077 27.1151 1.05191 26.9594C0.896117 26.8036 0.808594 26.5923 0.808594 26.372C0.808594 25.2673 0.808594 23.3259 0.808594 22.2202C0.808595 21.9995 0.89645 21.7878 1.05276 21.632C1.20908 21.4761 1.421 21.3889 1.64174 21.3895C3.33311 21.3967 5.01392 21.4196 6.70913 21.3866C6.76543 21.3851 6.82161 21.3825 6.87781 21.3787C7.04448 21.3664 7.21001 21.3437 7.37359 21.3093C8.06915 21.1632 8.71065 20.8235 9.29004 20.4206C9.42274 20.3284 9.55273 20.2322 9.68031 20.133C10.2978 19.6528 10.8603 19.1041 11.392 18.5315C12.0232 17.8516 12.6124 17.1333 13.1837 16.4027L13.799 15.5911L14.5072 14.6569C14.9612 14.0438 15.4134 13.4294 15.8683 12.817C16.282 12.2618 16.6982 11.7085 17.1242 11.1626L17.4301 10.7836L18.1915 9.84037C18.4439 9.53963 18.7008 9.24268 18.9635 8.95088C19.1678 8.72395 19.3755 8.50011 19.5872 8.28015C20.8376 6.9813 22.2431 5.79893 23.8667 4.9944C24.0704 4.89344 24.2772 4.79867 24.4868 4.71062C24.7631 4.59454 25.0444 4.49019 25.3299 4.39875C25.7105 4.27682 26.0986 4.1779 26.4915 4.104C27.0605 3.99696 27.6378 3.94478 28.2166 3.94251H28.2223V0.619629L35.2835 6.85003L28.2223 13.0804V9.75701L28.2224 9.757ZM28.2224 21.3876V18.0647L35.2835 24.2951L28.2224 30.5255V27.2027H28.2167C27.6367 27.2004 27.0583 27.1484 26.488 27.0417C26.0943 26.968 25.7053 26.8693 25.3236 26.7477C25.0375 26.6564 24.7555 26.5523 24.4783 26.4364C24.2681 26.3485 24.0607 26.2539 23.8563 26.1531C22.2674 25.3692 20.885 24.2243 19.6534 22.9622C19.4398 22.7433 19.2303 22.5204 19.0243 22.2942L18.5104 21.7081L19.0734 21.0081C19.5085 20.4517 19.9335 19.8875 20.3558 19.3213C20.8608 18.6418 21.3619 17.9594 21.8667 17.2798L22.1157 16.9602C22.6662 17.6429 23.2204 18.2913 23.8152 18.9009C24.3183 19.4165 24.8517 19.9072 25.4358 20.3303C26.0625 20.7841 26.764 21.1712 27.5305 21.3206C27.7493 21.3633 27.9711 21.3849 28.1939 21.3875L28.2223 21.3876H28.2224ZM12.741 14.2297L11.7126 13.0008C11.1165 12.3277 10.4854 11.679 9.78491 11.1135C9.65677 11.01 9.52623 10.9095 9.39296 10.8128C9.28852 10.737 9.1824 10.6634 9.07447 10.5926C8.51352 10.2247 7.89381 9.92389 7.22811 9.80926C7.03763 9.77646 6.8451 9.75995 6.65188 9.75768L6.61797 9.75755C6.61797 9.75755 3.24504 9.75755 1.63935 9.75755C1.18056 9.75755 0.808637 9.38562 0.808633 8.92683C0.808633 7.82139 0.808633 5.8781 0.808633 4.77286C0.808631 4.31425 1.18027 3.9424 1.63888 3.94214C3.32505 3.94073 5.01123 3.93619 6.69738 3.94279C6.77091 3.94366 6.84438 3.94509 6.91789 3.94711C7.11243 3.95396 7.30664 3.96534 7.50047 3.98356C7.8817 4.01938 8.26068 4.07872 8.63472 4.16063C9.00076 4.24079 9.362 4.34256 9.71643 4.46411C9.99909 4.56105 10.2774 4.67055 10.5507 4.79139C10.7787 4.89222 11.0032 5.00092 11.224 5.11675C12.7098 5.89629 14.0096 6.98776 15.1757 8.18507C15.3889 8.40393 15.5979 8.62679 15.8034 8.85285L16.3483 9.4752L15.8144 10.1405C15.3806 10.6964 14.9567 11.2598 14.5353 11.8252C14.0312 12.504 13.5308 13.1855 13.0264 13.8641L12.741 14.2297L12.741 14.2297Z" fill="white"/>
+              <Path fill-rule="evenodd" clip-rule="evenodd" d="M28.2224 9.757L28.1384 9.75854C27.9372 9.76407 27.7371 9.78532 27.5395 9.82402C26.8557 9.95801 26.2236 10.2854 25.6529 10.6763C25.5441 10.7509 25.4371 10.8281 25.3319 10.9075C24.7196 11.3695 24.1625 11.9024 23.6368 12.4597C23.0073 13.1272 22.4211 13.8346 21.8536 14.5551L21.0575 15.5974L20.682 16.0891C20.1268 16.8341 19.5774 17.5834 19.0232 18.3291C18.6087 18.8848 18.1916 19.4385 17.7646 19.9847L17.4273 20.4028L16.7782 21.2075C16.5259 21.5093 16.2692 21.8074 16.0067 22.1005C15.8026 22.3285 15.5951 22.5534 15.3835 22.7745C14.1349 24.08 12.7337 25.2716 11.115 26.0931C10.9121 26.196 10.7061 26.2929 10.4972 26.3833C10.222 26.5023 9.94186 26.6099 9.65741 26.7048C9.27818 26.8313 8.89139 26.9352 8.49954 27.0145C8.12246 27.0908 7.74076 27.1443 7.35718 27.1742C7.16216 27.1894 6.96686 27.1977 6.7713 27.2015C6.70025 27.2024 6.7004 27.2024 6.62928 27.2027C6.62928 27.2027 3.24749 27.2027 1.63932 27.2027C1.419 27.2027 1.2077 27.1151 1.05191 26.9594C0.896117 26.8036 0.808594 26.5923 0.808594 26.372C0.808594 25.2673 0.808594 23.3259 0.808594 22.2202C0.808595 21.9995 0.89645 21.7878 1.05276 21.632C1.20908 21.4761 1.421 21.3889 1.64174 21.3895C3.33311 21.3967 5.01392 21.4196 6.70913 21.3866C6.76543 21.3851 6.82161 21.3825 6.87781 21.3787C7.04448 21.3664 7.21001 21.3437 7.37359 21.3093C8.06915 21.1632 8.71065 20.8235 9.29004 20.4206C9.42274 20.3284 9.55273 20.2322 9.68031 20.133C10.2978 19.6528 10.8603 19.1041 11.392 18.5315C12.0232 17.8516 12.6124 17.1333 13.1837 16.4027L13.799 15.5911L14.5072 14.6569C14.9612 14.0438 15.4134 13.4294 15.8683 12.817C16.282 12.2618 16.6982 11.7085 17.1242 11.1626L17.4301 10.7836L18.1915 9.84037C18.4439 9.53963 18.7008 9.24268 18.9635 8.95088C19.1678 8.72395 19.3755 8.50011 19.5872 8.28015C20.8376 6.9813 22.2431 5.79893 23.8667 4.9944C24.0704 4.89344 24.2772 4.79867 24.4868 4.71062C24.7631 4.59454 25.0444 4.49019 25.3299 4.39875C25.7105 4.27682 26.0986 4.1779 26.4915 4.104C27.0605 3.99696 27.6378 3.94478 28.2166 3.94251H28.2223V0.619629L35.2835 6.85003L28.2223 13.0804V9.75701L28.2224 9.757ZM28.2224 21.3876V18.0647L35.2835 24.2951L28.2224 30.5255V27.2027H28.2167C27.6367 27.2004 27.0583 27.1484 26.488 27.0417C26.0943 26.968 25.7053 26.8693 25.3236 26.7477C25.0375 26.6564 24.7555 26.5523 24.4783 26.4364C24.2681 26.3485 24.0607 26.2539 23.8563 26.1531C22.2674 25.3692 20.885 24.2243 19.6534 22.9622C19.4398 22.7433 19.2303 22.5204 19.0243 22.2942L18.5104 21.7081L19.0734 21.0081C19.5085 20.4517 19.9335 19.8875 20.3558 19.3213C20.8608 18.6418 21.3619 17.9594 21.8667 17.2798L22.1157 16.9602C22.6662 17.6429 23.2204 18.2913 23.8152 18.9009C24.3183 19.4165 24.8517 19.9072 25.4358 20.3303C26.0625 20.7841 26.764 21.1712 27.5305 21.3206C27.7493 21.3633 27.9711 21.3849 28.1939 21.3875L28.2223 21.3876H28.2224ZM12.741 14.2297L11.7126 13.0008C11.1165 12.3277 10.4854 11.679 9.78491 11.1135C9.65677 11.01 9.52623 10.9095 9.39296 10.8128C9.28852 10.737 9.1824 10.6634 9.07447 10.5926C8.51352 10.2247 7.89381 9.92389 7.22811 9.80926C7.03763 9.77646 6.8451 9.75995 6.65188 9.75768L6.61797 9.75755C6.61797 9.75755 3.24504 9.75755 1.63935 9.75755C1.18056 9.75755 0.808637 9.38562 0.808633 8.92683C0.808633 7.82139 0.808633 5.8781 0.808633 4.77286C0.808631 4.31425 1.18027 3.9424 1.63888 3.94214C3.32505 3.94073 5.01123 3.93619 6.69738 3.94279C6.77091 3.94366 6.84438 3.94509 6.91789 3.94711C7.11243 3.95396 7.30664 3.96534 7.50047 3.98356C7.8817 4.01938 8.26068 4.07872 8.63472 4.16063C9.00076 4.24079 9.362 4.34256 9.71643 4.46411C9.99909 4.56105 10.2774 4.67055 10.5507 4.79139C10.7787 4.89222 11.0032 5.00092 11.224 5.11675C12.7098 5.89629 14.0096 6.98776 15.1757 8.18507C15.3889 8.40393 15.5979 8.62679 15.8034 8.85285L16.3483 9.4752L15.8144 10.1405C15.3806 10.6964 14.9567 11.2598 14.5353 11.8252C14.0312 12.504 13.5308 13.1855 13.0264 13.8641L12.741 14.2297L12.741 14.2297Z" fill="#00E0FF"/>
+              </G>
+            </Svg>
+            <Text 
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.reUser, dark: this.state.dark})} 
+            style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.reUser} </Text>
+            </View> : null} {item.text ? this.formatText(item.text) : '...'}</Text>}
             accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={20}/>}
           />
         </View>
@@ -1424,7 +1449,7 @@ class HomeScreen extends React.PureComponent{
         <Layout style={{ flexDirection: 'row', backgroundColor: 'transparent', marginVertical: 10}}>
         <View>
         <TouchableOpacity style={{ borderRadius: 35, elevation: 5, shadowColor: '#f2f2f2', marginHorizontal: 10,
-          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 7, paddingBottom: 5}}
+          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 7, paddingBottom: 5, marginTop: 2}}
           onPress={() => this.lovePosts(item.id, item.user)}> 
              {this.state.loves[index].isliked ? 
              <Icon name="heart" size={37} color="#FF007A" style={{
@@ -1436,15 +1461,16 @@ class HomeScreen extends React.PureComponent{
               <Icon name="heart-outline" size={37} color="#ABABAB" />}
         </TouchableOpacity>
         {this.state.loves[index].loves > 0 ?
-        <Text style={{textAlign: 'center', color: this.state.dark ? "white" : '#ABABAB', }}>{this.state.loves[index].loves}</Text> : null}
+        <Text style={{textAlign: 'center', color: this.state.loves[index].isliked ? 
+        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{this.state.loves[index].loves}</Text> : null}
         </View>
         <View>
         <TouchableOpacity style={{borderRadius: 5, elevation: 5, shadowColor: '#f2f2f2', marginHorizontal: 10,
-          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12}}
+          backgroundColor: 'white', paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12, marginTop: 2}}
         onPress={() => {
           this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
-            this.props.navigation.navigate('Create', {mixContent: uri, dark: this.state.dark, user: this.state.user})
+            this.props.navigation.navigate('Create', {mixContent: uri, mixId: item.id, dark: this.state.dark, user: this.state.user})
           )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
         }}>
            <Svg width="30" height="31" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1466,9 +1492,13 @@ class HomeScreen extends React.PureComponent{
                   })
                 )) : null
               }}>
-           <Icon name="triangle" size={60} color='white' style={{shadowOpacity: 2, textShadowRadius: 10, 
-            textShadowOffset:{width: 1,height: 1}}} />      
-           <FIcon name="share-2" size={25} color="#8000FE" style={{position: 'absolute', alignSelf: 'center', top: 25}} />
+          <FIcon name="triangle" size={60} color='white' style={{shadowOpacity: 1, textShadowRadius: 15, 
+            textShadowOffset:{width: -1, height: 1}, letterSpacing: 10}} />      
+           <Icon name="triangle" size={60} color='white' style={{position: 'absolute', alignSelf: 'center'}} />          
+           <Svg width="30" height="31" viewBox="0 0 40 41" fill="none" xmlns="http://www.w3.org/2000/svg"
+           style={{position: 'absolute', alignSelf: 'center', top: 20}}>
+            <Path d="M28.625 22.7505C27.3003 22.7505 26.0828 23.2086 25.1217 23.9748L19.1166 20.2216C19.2945 19.4172 19.2945 18.5837 19.1166 17.7793L25.1217 14.0261C26.0828 14.7923 27.3003 15.2505 28.625 15.2505C31.7316 15.2505 34.25 12.7321 34.25 9.62549C34.25 6.51891 31.7316 4.00049 28.625 4.00049C25.5184 4.00049 23 6.51891 23 9.62549C23 10.0449 23.0463 10.4534 23.1334 10.8466L17.1283 14.5998C16.1672 13.8336 14.9497 13.3755 13.625 13.3755C10.5184 13.3755 8 15.8939 8 19.0005C8 22.1071 10.5184 24.6255 13.625 24.6255C14.9497 24.6255 16.1672 24.1673 17.1283 23.4012L23.1334 27.1543C23.0446 27.5553 22.9999 27.9648 23 28.3755C23 31.4821 25.5184 34.0005 28.625 34.0005C31.7316 34.0005 34.25 31.4821 34.25 28.3755C34.25 25.2689 31.7316 22.7505 28.625 22.7505Z" fill="#8000FE"/>
+           </Svg>
           </TouchableOpacity>
         </View> 
         <TouchableOpacity style={{marginHorizontal: 10, alignItems: 'flex-end', position: 'absolute', right: 0, top: 5,
@@ -1616,22 +1646,6 @@ class HomeScreen extends React.PureComponent{
       })
 
     }
-    currentFeed(){
-      if(this.state.feedOrder == 'date_time'){
-        return 'new-box'
-      }else if(this.state.feedOrder == 'loved'){
-        return 'ios-arrow-up-circle'
-      }
-    }
-    changeFeed(){
-      if(this.state.feedOrder == 'date_time'){
-        this.fetch(null, 'loved')
-        ToastAndroid.show('Showing Top Memes', ToastAndroid.SHORT)
-      }else if(this.state.feedOrder == 'loved'){
-        this.fetch(null, 'date_time')
-        ToastAndroid.show('Showing the Latest Memes', ToastAndroid.SHORT)
-      }
-    }
 
     render(){
     if(this.state.isOffline){
@@ -1664,42 +1678,12 @@ class HomeScreen extends React.PureComponent{
     theme={this.state.dark ? eva.dark : eva.light }>
      
         <Layout level="2" style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <View style={{flexDirection:'row', zIndex: 20,
-              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, paddingRight: 15, paddingLeft: 15,
-                left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0)'}}>
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: this.state.user, dark: this.state.dark})}>
-            <FIcon name='user' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
-              <FIcon name='search' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity> 
-
-            <TouchableOpacity onPress={() => this.fetch('', 'date_time')} >
-             <FIcon name='home' size={35} color={this.state.dark ? "white" : "#000"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Notifications', {user: this.state.user, dark: this.state.dark})}>
-             <FIcon name='bell' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Conversations', {user: this.state.user, dark: this.state.dark})}
-            >
-               <FIcon name='message-circle' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity>
-        </View>
         <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
         style={{position: 'absolute', zIndex: 100, elevation: 100, bottom: 20, left: 20}}>
-        <Svg width="135" height="60" viewBox="0 0 135 63" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <G filter="url(#filter0_d)">
-          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="white"/>
-          <Path d="M28 8C16.9714 8 8 16.9714 8 28C8 39.0286 16.9714 48 28 48C39.0286 48 48 39.0286 48 28C48 16.9714 39.0286 8 28 8Z" fill="#FF00A8"/>
-          <Rect x="4" width="127" height="56" rx="28" fill="#FF00A8"/>
-          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="black"/>
-          <Path d="M30.9884 41.999C29.7432 41.999 28.8092 40.9872 28.8092 39.8198V16.2375C28.8092 14.9922 29.821 14.0582 30.9884 14.0582C32.1559 14.0582 33.1677 15.07 33.1677 16.2375V39.8198C33.1677 40.9872 32.2337 41.999 30.9884 41.999Z" fill="white"/>
-          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="black"/>
-          <Path d="M42.7429 30.1691H19.2384C17.9932 30.1691 17.0592 29.1573 17.0592 27.9898C17.0592 26.8224 18.071 25.8106 19.2384 25.8106H42.8208C44.066 25.8106 45 26.8224 45 27.9898C45 29.1573 43.9882 30.1691 42.7429 30.1691Z" fill="white"/>
-          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="black"/>
-          <Path d="M66.4521 24H64.2285L58.5244 14.9209V24H56.3008V11.2031H58.5244L64.2461 20.3174V11.2031H66.4521V24ZM73.0615 24.1758C71.708 24.1758 70.6094 23.751 69.7656 22.9014C68.9277 22.0459 68.5088 20.9092 68.5088 19.4912V19.2275C68.5088 18.2783 68.6904 17.4316 69.0537 16.6875C69.4229 15.9375 69.9385 15.3545 70.6006 14.9385C71.2627 14.5225 72.001 14.3145 72.8154 14.3145C74.1104 14.3145 75.1094 14.7275 75.8125 15.5537C76.5215 16.3799 76.876 17.5488 76.876 19.0605V19.9219H70.6621C70.7266 20.707 70.9873 21.3281 71.4443 21.7852C71.9072 22.2422 72.4873 22.4707 73.1846 22.4707C74.1631 22.4707 74.96 22.0752 75.5752 21.2842L76.7266 22.3828C76.3457 22.9512 75.8359 23.3936 75.1973 23.71C74.5645 24.0205 73.8525 24.1758 73.0615 24.1758ZM72.8066 16.0283C72.2207 16.0283 71.7461 16.2334 71.3828 16.6436C71.0254 17.0537 70.7969 17.625 70.6973 18.3574H74.7666V18.1992C74.7197 17.4844 74.5293 16.9453 74.1953 16.582C73.8613 16.2129 73.3984 16.0283 72.8066 16.0283ZM86.8955 21.0557L88.4072 14.4902H90.4902L87.8975 24H86.1396L84.1006 17.4697L82.0967 24H80.3389L77.7373 14.4902H79.8203L81.3584 20.9854L83.3096 14.4902H84.918L86.8955 21.0557ZM59.1836 31.2031L62.875 41.0117L66.5576 31.2031H69.4316V44H67.2168V39.7812L67.4365 34.1387L63.6572 44H62.0664L58.2959 34.1475L58.5156 39.7812V44H56.3008V31.2031H59.1836ZM76.0498 44.1758C74.6963 44.1758 73.5977 43.751 72.7539 42.9014C71.916 42.0459 71.4971 40.9092 71.4971 39.4912V39.2275C71.4971 38.2783 71.6787 37.4316 72.042 36.6875C72.4111 35.9375 72.9268 35.3545 73.5889 34.9385C74.251 34.5225 74.9893 34.3145 75.8037 34.3145C77.0986 34.3145 78.0977 34.7275 78.8008 35.5537C79.5098 36.3799 79.8643 37.5488 79.8643 39.0605V39.9219H73.6504C73.7148 40.707 73.9756 41.3281 74.4326 41.7852C74.8955 42.2422 75.4756 42.4707 76.1729 42.4707C77.1514 42.4707 77.9482 42.0752 78.5635 41.2842L79.7148 42.3828C79.334 42.9512 78.8242 43.3936 78.1855 43.71C77.5527 44.0205 76.8408 44.1758 76.0498 44.1758ZM75.7949 36.0283C75.209 36.0283 74.7344 36.2334 74.3711 36.6436C74.0137 37.0537 73.7852 37.625 73.6855 38.3574H77.7549V38.1992C77.708 37.4844 77.5176 36.9453 77.1836 36.582C76.8496 36.2129 76.3867 36.0283 75.7949 36.0283ZM83.5381 34.4902L83.5996 35.4834C84.2676 34.7041 85.1816 34.3145 86.3418 34.3145C87.6133 34.3145 88.4834 34.8008 88.9521 35.7734C89.6436 34.8008 90.6162 34.3145 91.8701 34.3145C92.9189 34.3145 93.6982 34.6045 94.208 35.1846C94.7236 35.7646 94.9873 36.6201 94.999 37.751V44H92.8633V37.8125C92.8633 37.209 92.7314 36.7666 92.4678 36.4854C92.2041 36.2041 91.7676 36.0635 91.1582 36.0635C90.6719 36.0635 90.2734 36.1953 89.9629 36.459C89.6582 36.7168 89.4443 37.0566 89.3213 37.4785L89.3301 44H87.1943V37.7422C87.165 36.623 86.5938 36.0635 85.4805 36.0635C84.625 36.0635 84.0186 36.4121 83.6611 37.1094V44H81.5254V34.4902H83.5381ZM101.38 44.1758C100.026 44.1758 98.9277 43.751 98.084 42.9014C97.2461 42.0459 96.8271 40.9092 96.8271 39.4912V39.2275C96.8271 38.2783 97.0088 37.4316 97.3721 36.6875C97.7412 35.9375 98.2568 35.3545 98.9189 34.9385C99.5811 34.5225 100.319 34.3145 101.134 34.3145C102.429 34.3145 103.428 34.7275 104.131 35.5537C104.84 36.3799 105.194 37.5488 105.194 39.0605V39.9219H98.9805C99.0449 40.707 99.3057 41.3281 99.7627 41.7852C100.226 42.2422 100.806 42.4707 101.503 42.4707C102.481 42.4707 103.278 42.0752 103.894 41.2842L105.045 42.3828C104.664 42.9512 104.154 43.3936 103.516 43.71C102.883 44.0205 102.171 44.1758 101.38 44.1758ZM101.125 36.0283C100.539 36.0283 100.064 36.2334 99.7012 36.6436C99.3438 37.0537 99.1152 37.625 99.0156 38.3574H103.085V38.1992C103.038 37.4844 102.848 36.9453 102.514 36.582C102.18 36.2129 101.717 36.0283 101.125 36.0283Z" fill="white"/>
-          </G>
+        <Svg width="80" height="80" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <Circle cx="65" cy="69" r="51.597" fill="#FF00F5" stroke="#FF00F5" stroke-width="0.806011"/>
+          <Path d="M64.9712 88.5652C63.2247 88.5652 61.9148 87.1461 61.9148 85.5088V52.4338C61.9148 50.6873 63.3339 49.3774 64.9712 49.3774C66.6086 49.3774 68.0277 50.7964 68.0277 52.4338V85.5088C68.0277 87.1461 66.7178 88.5652 64.9712 88.5652Z" fill="#FFF"/>
+          <Path d="M81.522 71.8629H48.5562C46.8097 71.8629 45.4998 70.4438 45.4998 68.8064C45.4998 67.1691 46.9188 65.75 48.5562 65.75H81.6311C83.3776 65.75 84.6875 67.1691 84.6875 68.8064C84.6875 70.4438 83.2685 71.8629 81.522 71.8629Z" fill="#FFF"/>
           </Svg>
         </TouchableOpacity>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
@@ -1714,33 +1698,6 @@ class HomeScreen extends React.PureComponent{
         <ApplicationProvider {...eva}
     theme={this.state.dark ? eva.dark : eva.light}>
        <Layout level="2" style={{  flex: 1, margin: 0, padding: 0, backgroundColor: '#F4F4F4'  }}>
-       <View style={{flexDirection:'row', zIndex: 20,
-              justifyContent: 'space-between', alignItems: 'center', paddingTop: 30, top: 0, paddingRight: 15, paddingLeft: 15,
-                left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0)'}}>
-             <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: this.state.user, dark: this.state.dark})}>
-            <FIcon name='user' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests', {user: this.state.user, dark: this.state.dark})}>
-              <FIcon name='search' size={35} color={this.state.dark ? "white" : "black"} />
-            </TouchableOpacity> 
-
-            <TouchableOpacity onPress={() => this.fetch('', 'date_time')} >
-             <FIcon name='home' size={35} color={this.state.dark ? "white" : "#000"} />
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Notifications', {user: this.state.user, dark: this.state.dark})}>
-            <View style={styles.badgeIconView}>
-             <FIcon name='bell' size={35} color={this.state.dark ? "white" : "black"} />
-              {Object.keys(this.state.data).length > 0 ? this.state.data[0].unreadN > 0 ? <Text style={styles.badge}> {this.state.data[0].unreadN} </Text> : null : null}
-            </View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.props.navigation.navigate('Conversations', {user: this.state.user, dark: this.state.dark})}>
-            <View style={styles.badgeIconView}>
-            <FIcon name='message-circle' size={35} color={this.state.dark ? "white" : "black"} />
-              {Object.keys(this.state.data).length > 0 ? this.state.data[0].unreadM > 0 ? <Text style={styles.badge}> {this.state.data[0].unreadM} </Text> : null : null}
-            </View>
-            </TouchableOpacity>
-        </View>
         { this.state.helpUser ? <AppIntroSlider
         slides={slides}
         renderItem={this._renderItem}
@@ -1761,6 +1718,7 @@ class HomeScreen extends React.PureComponent{
                   this.fetch(user, this.state.feedOrder)
                   this.setState({data: []})
                 } } />}
+               
             />}
             
         <Overlay
@@ -2160,8 +2118,8 @@ class ViewPost extends React.Component{
   formatText(string){
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
-        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')}>
-          <Text key={i} style={{fontWeight: 'bold', elevation: 10, zIndex: 10}}>
+        return <TouchableOpacity onPress={() => this.props.navigation.navigate('Contests')} style={{elevation: 10, zIndex: 10}}>
+          <Text key={i} style={{fontWeight: 'bold', }}>
             {v}</Text>
             </TouchableOpacity>
       }   else{
@@ -2713,7 +2671,7 @@ class Notifications extends React.Component{
     return(
       <ApplicationProvider
   {...eva}
-  theme={this.state.dark ? eva.dark : eva.light }>
+  theme={eva.light}>
       <Layout style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: this.state.dark ? '#151a30' : 'white' }}>
         <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
         priority: FastImage.priority.high,}} style={{
@@ -2726,7 +2684,7 @@ class Notifications extends React.Component{
    return(
     <ApplicationProvider
     {...eva}
-    theme={this.state.dark ? eva.dark : eva.light}>
+    theme={eva.light}>
        <Layout style={{  flex: 1, alignContent: 'center', backgroundColor: this.state.dark ? '#151a30' : 'white' }}>
        <List
           data={this.state.data}
@@ -3168,6 +3126,10 @@ class Create extends React.Component{
     }
   }
   post(){
+    const { params } = this.props.navigation.state
+    const mixId = params ? params.mixId : null
+    const mix = params ? params.mixContent : null
+
     ToastAndroid.show('Baking your Ugly Meme', ToastAndroid.SHORT)
     let upload = RNFetchBlob.fetch('POST', 'https://lishup.com/app/upload.php', {
             'Content-Type' : 'multipart/form-data',
@@ -3196,8 +3158,8 @@ class Create extends React.Component{
                   user: this.state.user, img: resp.text(), 
                   text: this.state.caption, community: 46, 
                   cost: this.state.contestCost,
-                  remixed: this.state.remixUri }),
-                  
+                  remixed: this.state.remixUri,
+                  remixID: mixId }),
               })
               .then((response) => response.json())
               .then((responseJson) => {
@@ -4453,7 +4415,7 @@ class Profile extends React.Component{
       return(
         <ApplicationProvider
     {...eva}
-    theme={this.state.dark ? eva.dark : eva.light }>
+    theme={eva.light }>
         <Layout style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
           priority: FastImage.priority.high,}} style={{
@@ -4464,7 +4426,7 @@ class Profile extends React.Component{
       )
     }else{
     return(
-      <ApplicationProvider {...eva} theme={this.state.dark ? eva.dark : eva.light}>
+      <ApplicationProvider {...eva} theme={eva.light}>
         <Layout style={{flex: 1}}>
         <ScrollView style={{flex: 1}}>
            <Text category="h5" style={{ textAlign: 'center', marginTop: 10}}>{this.state.data.fullName}</Text>
@@ -4784,7 +4746,7 @@ class Conversations extends React.Component{
       return(
         <ApplicationProvider
     {...eva}
-    theme={this.state.dark ? eva.dark : eva.light }>
+    theme={eva.light }>
         <Layout level="2" style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
           priority: FastImage.priority.high,}} style={{
@@ -4800,8 +4762,8 @@ class Conversations extends React.Component{
         var output = this.state.data
       }
     return(
-      <ApplicationProvider {...eva} theme={this.state.dark ? eva.dark : eva.light} >
-        <Layout style={{flex: 1, backgroundColor: this.state.dark ? '#151a30' : '#fff'}} >
+      <ApplicationProvider {...eva} theme={eva.light} >
+        <Layout style={{flex: 1}} >
           <Button style={{alignSelf: 'center', marginVertical: 10}} 
             appearance="ghost" onPress={() => Linking.openURL("market://details?id=com.bubblink.lishup")}>Get Bubblink Messenger for better Chatting</Button>
         <FlatList
@@ -5162,7 +5124,7 @@ return (
       return(
         <ApplicationProvider
     {...eva}
-    theme={this.state.dark ? eva.dark : eva.light }>
+    theme={this.state.dark ? eva.dark : eva.light}>
         <Layout level="2" style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
           <FastImage source={{uri: 'https://mir-s3-cdn-cf.behance.net/project_modules/disp/35771931234507.564a1d2403b3a.gif', 
           priority: FastImage.priority.high,}} style={{
@@ -6031,24 +5993,105 @@ const styles = StyleSheet.create({
   }
 })
 
-const App = createStackNavigator({
+const TabNavigator = createMaterialTopTabNavigator({
+  
+  MyProfile: {
+    screen: Profile,
+    navigationOptions: {
+      tabBarVisible: true,
+      tabBarIcon: ({ tintColor }) => (
+        <FIcon name="user" size={35} color={tintColor ? tintColor : 'black'} />
+      ),
+      tabBarLabel: ({ focused, tintColor }) => {
+        return null
+      }
+    }
+  },
+  Contests: {
+    screen: Contests,
+    navigationOptions: {
+      tabBarVisible: true,
+      tabBarIcon: ({ tintColor }) => (
+        <FIcon name="search" size={35} color={tintColor ? tintColor : 'black'} />
+      ),
+      tabBarLabel: ({ focused, tintColor }) => {
+        return null
+      }
+    }
+  },
   Home: {
     screen: HomeScreen,
+    
+  },  
+  Notifications : {
+    screen: Notifications,
+    navigationOptions: ({navigation, screenProps}) => ({
+      tabBarVisible: true,
+      tabBarIcon: ({ tintColor }) => (
+        notifyCount > 0 ?
+        <View style={styles.badgeIconView}>
+         <FIcon name='bell' size={35} color={tintColor ? tintColor : 'black'} />
+          <NativeText style={styles.badge}> {notifyCount} </NativeText>
+        </View> : <FIcon name='bell' size={35} color={tintColor ? tintColor : 'black'} />
+      ),
+      tabBarLabel: ({ focused, tintColor }) => {
+        return null
+      }
+    })
+  },
+  Conversations: {
+    screen: Conversations,
+    navigationOptions: {
+      tabBarVisible: true,
+      tabBarIcon: ({ tintColor }) => (
+        msgCount > 0 ?
+        <View style={styles.badgeIconView}>
+         <FIcon name='message-circle' size={35} color={tintColor ? tintColor : 'black'} />
+          <NativeText style={styles.badge}> {msgCount} </NativeText>
+        </View> : <FIcon name='message-circle' size={35} color={tintColor ? tintColor : 'black'} />
+      ),
+      tabBarLabel: ({ focused, tintColor }) => {
+        return null
+      }
+    }
+  },
+},
+{
+  order: ['MyProfile', 'Contests', 'Home', 'Notifications',  'Conversations'],
+  initialRouteName: 'Home',
+  lazy: true,
+  swipeEnabled: true,
+  tabBarOptions: {
+    upperCaseLabel: false,
+    activeTintColor: 'black',
+    inactiveTintColor: '#CBCBCB',
+    style: {
+      backgroundColor: 'white',
+      elevation: 0
+    },
+    tabStyle: {flexDirection: 'column', paddingTop: 40, paddingBottom: 30, elevation: 0},
+    showIcon: true,
+    iconStyle: {width: 40},
+    indicatorStyle: {backgroundColor: 'transparent'},
+  },
+})
+
+const App = createStackNavigator({
+  Home: {
+    screen: TabNavigator,
+    navigationOptions: { header: null }
   },
   New : {
     screen: Create
   },
   ViewPost : {
-    screen: ViewPost
-  },
-  Notifications : {
-    screen: Notifications
+    screen: ViewPost,
   },
   Create : {
     screen: Create
   },
   Profile: {
-    screen: Profile
+    screen: Profile,
   },
   Contests: {
     screen: Contests
@@ -6062,11 +6105,8 @@ const App = createStackNavigator({
   Messaging : {
     screen: Messaging
   },
-  Conversations: {
-    screen: Conversations
-  },
   Settings : {
-    screen: Settings
+    screen: Settings,
   }
 },
 {

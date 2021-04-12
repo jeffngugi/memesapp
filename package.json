@@ -58,7 +58,7 @@
     "react-native-view-shot": "^3.1.2",
     "react-navigation": "^4.4.1",
     "react-navigation-stack": "^2.8.3",
-    "react-navigation-tabs": "^2.9.2",
+    "react-navigation-tabs": "^2.11.0",
     "rn-fetch-blob": "^0.12.0",
     "socket.io-client": "^2.3.1",
     "translate-google-api": "^1.0.4"
