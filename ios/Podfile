@@ -11,6 +11,7 @@ target 'Meme' do
   pod 'RNVectorIcons', :path => '../node_modules/react-native-vector-icons'
 
   pod 'RNCAsyncStorage', :path => '../node_modules/@react-native-async-storage/async-storage'
+  pod 'Firebase/Analytics'
 
   target 'MemeTests' do
     inherit! :complete

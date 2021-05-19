@@ -46,6 +46,17 @@ static void InitializeFlipper(UIApplication *application) {
   return YES;
 }
 
+@import UIKit;
+@import Firebase;
+
+@implementation AppDelegate
+
+- (BOOL)application:(UIApplication *)application
+    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+  [FIRApp configure];
+  return YES;
+}
+
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
 {
 #if DEBUG
