@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Meme</string>
+	<string>Meeeme</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -76,5 +76,12 @@
 		<string>Jokerman-Regular.ttf</string>
 		<string>Satisfy-Regular.ttf</string>
 	</array>
+
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Meeeme would like to save photos from the app to your gallery</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Meeeme would like to access your photo gallery for uploading images to the app</string>
+	<key>NSCameraUsageDescription</key>
+    <string>Meeeme would like use your device camera</string>
 </dict>
 </plist>

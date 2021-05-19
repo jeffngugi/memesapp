@@ -1,7 +1,8 @@
 import React, { Component, } from "react"
-import {Dimensions, Image} from 'react-native'
+import {Dimensions} from 'react-native'
 import PropTypes from 'prop-types'
-import { TouchableOpacity } from "react-native-gesture-handler";
+import {TouchableWithoutFeedback } from "react-native-gesture-handler"
+import FastImage from 'react-native-fast-image'
 
     export default class ScaledImage extends Component {
         state = {}
@@ -10,14 +11,19 @@ import { TouchableOpacity } from "react-native-gesture-handler";
             const { uri, width, height, source } = this.props;
             this.setState({ source: source, width: width || height, height: height || width });
         }
+        componentWillReceiveProps(nextProps) {
+            if (nextProps.source !== this.state.source) {
+              this.setState({ source: nextProps.source })
+            }
+          }
 
         render() {
             return (
-               <TouchableOpacity onPress={this.props.onPress} style={{elevation: 5}}>
-                <Image
+               <TouchableWithoutFeedback onPress={this.props.onPress} style={{elevation: 5}}>
+                <FastImage
                     source={this.state.source}
                     onLoad={(value) => {
-                        const { height, width } = value.nativeEvent.source;
+                        const { height, width } = value.nativeEvent;
                         if (this.props.width && !this.props.height) {
                             this.setState({
                                 width: this.props.width,
@@ -33,12 +39,11 @@ import { TouchableOpacity } from "react-native-gesture-handler";
                         }
 
                     }}
-                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100, resizeMode:"contain",
-                        alignSelf: 'center' }, this.props.style]}
-                    containerStyle={{marginHorizontal: 10}}
-                    loadingIndicatorSource={this.props.loadingIndicatorSource}
+                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,
+                        alignSelf: 'center', marginHorizontal: 10 }, this.props.style]}
                     onLongPress={this.props.onLongPress}
-                /></TouchableOpacity>
+                    resizeMode="contain"
+                /></TouchableWithoutFeedback>
                 
             );
         }

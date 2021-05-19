@@ -139,8 +139,8 @@ android {
         applicationId "com.meme.lishup"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 19
-        versionName "1.1.4"
+        versionCode 24
+        versionName "1.1.9"
         renderscriptSupportModeEnabled true
         multiDexEnabled true
     }
