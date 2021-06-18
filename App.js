@@ -33,10 +33,11 @@ const incBadgem=(number)=>{
 }
 import * as eva from '@eva-design/eva'
 import { ApplicationProvider, Layout, Button, ButtonGroup,
-   Input, Avatar, List, ListItem, Toggle, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components'
-import {Card, Divider, Overlay, ListItem as ElementList} from 'react-native-elements'  
+   Input, Avatar, ListItem, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components'
+import {Card, Divider, Overlay,} from 'react-native-elements'  
+import { copilot, walkthroughable, CopilotStep } from "react-native-copilot"
 import Icon from 'react-native-vector-icons/Ionicons'
-import Carousel, {ParallaxImage} from 'react-native-snap-carousel'
+import Carousel from 'react-native-snap-carousel'
 import Svg, {
  Path, Circle, Rect, G, Defs, Filter
 } from 'react-native-svg'
@@ -53,7 +54,7 @@ import RNEventSource from 'react-native-event-source'
 import {
   GiphyUi
 } from 'react-native-giphy-ui'
-import RNFS from 'react-native-fs'
+import RNFS, { existsAssets } from 'react-native-fs'
 import ImagePicker from 'react-native-image-picker'
 import RNFetchBlob from 'rn-fetch-blob'
 import { ScreenContainer } from 'react-native-screens'
@@ -91,6 +92,9 @@ import Profile from './screens/Profile'
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
 
 
+const CopilotText = walkthroughable(NativeText)
+const CopilotView = walkthroughable(View)
+const CopilotTouchableOpacity = walkthroughable(TouchableOpacity)
 
 const slides = [
   {'name': 'create'},
@@ -832,7 +836,7 @@ class Authentication extends React.Component{
         <ApplicationProvider
           {...eva}
           theme={eva.light }> 
-            <Layout style={{flex: 1, paddingTop: 30, alignItems: 'center', backgroundColor: '#FFD362'}}>
+            <Layout style={{flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: '#FFD362'}}>
             <View style={{alignSelf: 'center', width: "90%"}}> 
                   <Text category="h4" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Sign In:</Text>
                   <Text category="h5" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Enter Email/ Phone #</Text>
@@ -957,12 +961,12 @@ class HomeScreen extends React.PureComponent{
       showAwards: false,
       showLoves: false,
       currentPostId: '',
+      currentPostIdx: 0,
       currentAwardUser: '',
       awardAmount: 0,
       showCongrats: false,
       feedOrder: 'date_time',
-      currentPostAuthor: '',
-      helpUser: false,
+      currentPostAuthor: '',\
       moreLoading: false,
       loves: [],
       language: 'en',
@@ -971,6 +975,9 @@ class HomeScreen extends React.PureComponent{
       replyingPerson: '',
       memeBtnvisible: true,
       showLoveSuggestion: false,
+      showMoreOptions: false,
+      reportPost: false,
+      reportReason: '',
     }
     this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
     this.socket.on('connect', function (data) {
@@ -1079,12 +1086,16 @@ class HomeScreen extends React.PureComponent{
       console.log(theme)
       if(theme != 'true') {
         await AsyncStorage.setItem('first', 'true')
-        this.setState({helpUser: true})
+        this.props.start()
+        this.props.copilotEvents.on("stop", () => {
+          this.setState({showLoveSuggestion: true})
+        })
       }else{
         await AsyncStorage.setItem('first', 'true')
       }
     } catch(er) {
       ToastAndroid.show('Having hard time to help you to get started', ToastAndroid.SHORT)
+      console.log(er)
     }
   }
   checkReceivedContent(){
@@ -1268,24 +1279,6 @@ class HomeScreen extends React.PureComponent{
       })
   }
   }
-
-  _renderItem =  props => (
-    <View style={{zIndex: 50, height: Dimensions.get('window').height, 
-    width: Dimensions.get('window').width, fontWeight: 'bold', backgroundColor: 'rgba(0, 0, 0, 0.7)'}}>
-      {props.name == 'navigation' ? <>
-      <FIcon name="arrow-up" size={80} color="white" style={{alignSelf: 'center'}} />
-      <Text style={{fontSize: 55, color: '#FFF', textAlign: 'center', marginTop: 10}}>Navigation</Text>
-      <FastImage source={require('./slides/blur.png')} style={{alignSelf: 'center', position: 'absolute', width: Dimensions.get('window').width,
-          height:'100%', zIndex: -5}} /></> : 
-      <>
-      <FastImage source={props.name == 'scroll' ? 
-      require('./slides/scroll.png') : props.name == 'remix' ? require('./slides/remix.png') : 
-      props.name == 'story1' ? require('./slides/story1.png') : props.name == 'story2' ? require('./slides/story2.png')
-       : props.name == 'create' ? require('./slides/create.png') : require('./slides/actions.png')} style={{alignSelf: 'center', position: 'absolute', width: Dimensions.get('window').width,
-          height:'100%'}} />
-      </>}
-    </View>
-  )
   formatText(string){
     return string.split(/((?:^|\s)(?:#[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('#')){
@@ -1326,7 +1319,10 @@ class HomeScreen extends React.PureComponent{
             onPress={() => this.props.navigation.navigate('Profile', {user: item.reUser, dark: this.state.dark})} 
             style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.reUser} </NativeText>
             </View> : null} {item.text ? this.formatText(item.text) : '...'}</NativeText>}
-            accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={20}/>}
+            accessoryRight={evaProps => <TouchableOpacity onPress={() => 
+              this.setState({showMoreOptions: true, currentPostIdx: index}) }>
+              <EnIcon name="dots-three-horizontal" color="#ABABAB" size={25} />
+              </TouchableOpacity>}
           />
         </View>
         <View style={{ borderRadius: 5, padding: 0}}>
@@ -1352,7 +1348,7 @@ class HomeScreen extends React.PureComponent{
               firstItem={1}
               inactiveSlideOpacity={1}
             />
-          )) : null
+          )) :  <FastImage source={require('./GemsIcons/loader.png')} style={{alignSelf: 'center', marginTop: 10, width: Dimensions.get('window').width, height: Dimensions.get('window').width}} />
         :
         this.state.imageUrls[index] && this.state.imageUrls[index].length
           ? this.state.imageUrls[index].map((uri) => (
@@ -1402,6 +1398,8 @@ class HomeScreen extends React.PureComponent{
             </G>
           </Svg>
         </TouchableOpacity>
+        {parseInt(item.remixCount) > 0 ?
+        <Text style={{textAlign: 'center', color: '#00E0FF' }}>{item.remixCount}</Text> : null}
         </View>
         <View>
         <TouchableOpacity style={{ marginLeft: 5, paddingTop: 0, alignItems: 'center', justifyContent: 'center'}}
@@ -1429,23 +1427,24 @@ class HomeScreen extends React.PureComponent{
              <FIcon name="gift" size={29} color='#ababab' />      
            </TouchableOpacity>
         </View>   
-        <Input placeholder="type a comment" style={{
-           backgroundColor: 'transparent', marginTop: 25, borderWidth: 0, borderColor: 'transparent', borderRadius: 0, width: '95%', marginBottom: 0,
-            alignSelf: 'center'}} textStyle={{color: this.state.dark ?'white' : '#dbdbdb'}} placeholderTextColor={this.state.dark ?'white' : '#dbdbdb'} size="large"
-           accessoryRight={props =>  <TouchableOpacity style={{height: 30, marginHorizontal: 10, marginRight: 16, flexDirection: 'row'}}
+          <TouchableOpacity style={{flexDirection: 'row', justifyContent: 'space-between', width: '95%', alignItems: 'center'}}
           onPress={() =>  {
             this.setState({showComments: true, currentPostId: item.id, currentPostAuthor: item.user})
             this.fetchComments(item.id)
           }}>
-            <FIcon name='message-circle' size={30} color="#ababab" />
-           <Text style={{fontWeight: 'bold', color: this.state.dark ?'white' : '#5c5c5c', marginLeft: 3,
-             position: 'absolute', left: 31 }}>{parseInt(item.comments) > 0 ? item.comments : null}</Text>
-          </TouchableOpacity>}
-          onFocus={() => {
-            this.setState({showComments: true, currentPostId: item.id, currentPostAuthor: item.user})
-            this.fetchComments(item.id)
-          }} 
-          multiline={true}/></View>
+            <TouchableOpacity style={{marginTop: 20, marginBottom: 25, marginLeft: 25, alignSelf: 'center'}}
+               onPress={() => {
+                this.setState({showComments: true, currentPostId: item.id, currentPostAuthor: item.user})
+                this.fetchComments(item.id)
+               }}>
+              <Text style={{color: '#dbdbdb'}}>type a comment</Text></TouchableOpacity>
+              <View style={{height: 30, marginHorizontal: 10, marginRight: 16, flexDirection: 'row'}}>
+                <FIcon name='message-circle' size={30} color="#ababab" />
+              <Text style={{fontWeight: 'bold', color: this.state.dark ?'white' : '#5c5c5c', marginLeft: 3,
+                position: 'absolute', left: 31 }}>{parseInt(item.comments) > 0 ? item.comments : null}</Text>
+              </View>
+          </TouchableOpacity>
+          </View>
         </View>
   )
     renderComments = ({item, idx}) => (
@@ -1565,6 +1564,73 @@ class HomeScreen extends React.PureComponent{
       })
 
     }
+    reportPost(){
+      if(this.state.reportReason){
+      fetch('https://lishup.com/app/newreport.php', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user: this.state.user, lid: this.state.data[this.state.currentPostIdx].id, reason: this.state.reportReason}),
+      })
+      .catch((error) => {
+        console.log(error)
+        ToastAndroid.show('Something went wrong. Retry later', ToastAndroid.SHORT)
+      })
+      ToastAndroid.show('Reported Successfully', ToastAndroid.SHORT)
+      }else{
+        Alert.alert('Be specific', 'Please explain what is wrong, this will help us to take effective actions faster')
+      }
+    }
+    deleteMeme(){
+      fetch('https://lishup.com/app/deletepost.php', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: this.state.data[this.state.currentPostIdx].id, key: 'idkMeme'}),
+      })
+      .then(data => {
+        ToastAndroid.show('Deleted Meme Successfully', ToastAndroid.SHORT)
+        this.props.navigation.navigate('Home')
+      })
+      .catch((error) => {
+        console.log(error)
+        ToastAndroid.show('Something went wrong. Retry later', ToastAndroid.SHORT)
+      })
+          
+      }
+
+      addtoBookMarks = async() => {
+        var id = this.state.data[this.state.currentPostIdx].id
+        try {
+          var previous = await AsyncStorage.getItem('bookmarks')
+          console.log(JSON.parse(previous))
+          if(previous == null) {
+            await AsyncStorage.setItem('bookmarks', JSON.stringify([{
+              id: this.state.data[this.state.currentPostIdx].id,
+              uri: this.state.imageUrls[this.state.currentPostIdx][0]
+            }]))
+          }else{
+            let newAdd = [{ id: id, uri: this.state.imageUrls[this.state.currentPostIdx][0] }]
+            let previousData = JSON.parse(previous)
+                if(!this.contains(previousData, "id", id)){
+                  previousData = previousData.concat(newAdd)
+                  await AsyncStorage.setItem('bookmarks', JSON.stringify(previousData))
+                  ToastAndroid.show('Bookmarked this Meme', ToastAndroid.SHORT)
+                }else{
+                  previousData.splice(previousData.findIndex(item => item.id === id), 1)
+                  await AsyncStorage.setItem('bookmarks', JSON.stringify(previousData))
+                  ToastAndroid.show('Removed Bookmark', ToastAndroid.SHORT)
+                }
+          }
+        } catch(e) {
+          ToastAndroid.show('Unable to Bookmark', ToastAndroid.SHORT)
+          console.log(e)
+        }
+      }
 
     render(){
     if(this.state.isOffline){
@@ -1616,18 +1682,7 @@ class HomeScreen extends React.PureComponent{
       return(
         <ApplicationProvider {...eva}
         theme={eva.light }>
-       <Layout level="2" style={{  flex: 1, margin: 0, padding: 0, backgroundColor: '#F4F4F4'  }}>
-        { this.state.helpUser ? <AppIntroSlider
-        slides={slides}
-        renderItem={this._renderItem}
-        onDone={() => {
-          this.setState({helpUser: false})
-          setTimeout(() => {
-            this.setState({showLoveSuggestion: true})
-          }, 2500)
-        }}
-        bottomButton
-      />  :     
+       <Layout level="2" style={{  flex: 1, margin: 0, padding: 0, backgroundColor: '#F4F4F4'  }}>    
         <FlatList
               ref={(c) => { this._carousel = c; }}
               data={this.state.data}
@@ -1640,11 +1695,11 @@ class HomeScreen extends React.PureComponent{
                   const user = params ? params.user : null
 
                   this.fetch(user, this.state.feedOrder)
-                  this.setState({data: []})
                 } } />}
                
-            />}
+           />
             
+        
         <Overlay
         animationType="slide"
         transparent={true}
@@ -1685,14 +1740,62 @@ class HomeScreen extends React.PureComponent{
           </Layout>
         </Overlay>   
 
-        {!this.state.helpUser && !this.state.showComments ? <TouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
+        <CopilotStep
+          text="Remix Memes and make your own Version!"
+          order={2}
+          name="remix"
+        >
+          <CopilotView style={{position: 'absolute', bottom: 180, left: 120}} />
+        </CopilotStep>
+        <CopilotStep
+          text="Tap to Watch Meeeme Story!"
+          order={3}
+          name="story"
+        >
+          <CopilotView style={{position: 'absolute', bottom: 300, left: 120}} />
+        </CopilotStep>
+        <CopilotStep
+          text="Find and Join Contests! Check LeaderBoards!"
+          order={4}
+          name="contests"
+        >
+          <CopilotView style={{position: 'absolute', top: 10, left: 100}} />
+        </CopilotStep>
+        <CopilotStep
+          text="Check your Profile! Buy Profile Backgrounds and Sunglasses!!"
+          order={5}
+          name="profile"
+        >
+          <CopilotView style={{position: 'absolute', top: 10, left: 20}} />
+        </CopilotStep>
+        <CopilotStep
+          text="Gift Gems to your favourite Memers!"
+          order={6}
+          name="gift"
+        >
+          <CopilotView style={{position: 'absolute', bottom: 180, right: 50}} />
+        </CopilotStep>
+        <CopilotStep
+          text="Comment on Memes with 1B+ animated GIF, Stickers and Emoji!"
+          order={7}
+          name="comments"
+        >
+          <CopilotView style={{position: 'absolute', bottom: 120, right: 50}} />
+        </CopilotStep>
+        {!this.state.showComments ? 
+        <CopilotStep
+          text="Create and Post new Memes!"
+          order={1}
+          name="create"
+        >
+          <CopilotTouchableOpacity onPress={() => this.props.navigation.navigate('Create', {dark: this.state.dark, user: this.state.user})} 
         style={{position: 'absolute', zIndex: 100, elevation: 100, bottom: 20, right: 20}}>
         <Svg width="80" height="80" viewBox="0 0 130 130" fill="none" xmlns="http://www.w3.org/2000/svg">
           <Circle cx="65" cy="69" r="51.597" fill="#FF00F5" stroke="#FF00F5" stroke-width="0.806011"/>
           <Path d="M64.9712 88.5652C63.2247 88.5652 61.9148 87.1461 61.9148 85.5088V52.4338C61.9148 50.6873 63.3339 49.3774 64.9712 49.3774C66.6086 49.3774 68.0277 50.7964 68.0277 52.4338V85.5088C68.0277 87.1461 66.7178 88.5652 64.9712 88.5652Z" fill="#FFF"/>
           <Path d="M81.522 71.8629H48.5562C46.8097 71.8629 45.4998 70.4438 45.4998 68.8064C45.4998 67.1691 46.9188 65.75 48.5562 65.75H81.6311C83.3776 65.75 84.6875 67.1691 84.6875 68.8064C84.6875 70.4438 83.2685 71.8629 81.522 71.8629Z" fill="#FFF"/>
           </Svg>
-        </TouchableOpacity> : null}
+        </CopilotTouchableOpacity></CopilotStep> : null}
         <Overlay
         animationType="slide"
         transparent={true}
@@ -1804,6 +1907,76 @@ class HomeScreen extends React.PureComponent{
            <Text style={{color: 'white', fontSize: 20}}>Love Memes!</Text>
          </TouchableOpacity>
       </Overlay>
+      <Overlay
+        animationType="slide"
+        transparent={true}
+        visible={this.state.showAwards}
+        onDismiss={() => {
+          this.setState({showAwards: !this.state.showAwards})
+        }}
+        onBackdropPress={() => {
+          this.setState({showAwards: !this.state.showAwards})
+        }} overlayStyle={{position: 'absolute', bottom: 0, width: Dimensions.get('window').width, height: "45%"}}>
+        <Layout style={{ justifyContent: 'center', alignItems: 'center',
+           borderRadius: 0, backgroundColor: '#fff', width: "100%", height: "100%", border: 0, margin: 0 }}>
+            {this.state.language == 'en' ? <Text category="h6" style={{textAlign: 'center', marginVertical: 10, color: 'black'}}>Award User</Text>
+            : <PowerTranslator text={'Award User'} style={{textAlign: 'center', marginVertical: 10, color: 
+            this.state.dark ? 'white' : 'black'}} target={this.state.language} />}
+            <Divider />
+            <ButtonGroup status="basic">
+              <Button onPress={() => this.setState({awardAmount: 5})} style={{backgroundColor: 'rgba(51, 102, 255, 0.16)'}}><NativeText style={{fontWeight: 'bold', fontSize: 20}}>5</NativeText> 
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
+              <Button style={{backgroundColor: 'rgba(51, 102, 255, 0.16)'}} onPress={() => this.setState({awardAmount: 10})}><NativeText style={{fontWeight: 'bold', fontSize: 20}}>10</NativeText> 
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
+              <Button style={{backgroundColor: 'rgba(51, 102, 255, 0.16)' }} onPress={() => this.setState({awardAmount: 20})}><NativeText style={{fontWeight: 'bold', fontSize: 20}}>20</NativeText> 
+              <Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+                </Svg></Button>
+            </ButtonGroup>
+            <Input keyboardType="numeric" style={{borderColor: 'transparent', borderBottomColor: 'black', padding: 10, backgroundColor: 'transparent', textAlign: 'center', margin: 10,
+              opacity: this.state.awardAmount ? 1 : 0.5}} 
+            placeholder="10 Gems" onChangeText={val => this.setState({awardAmount: val})} value={this.state.awardAmount.toString()}
+            textStyle={{fontSize: 25, textAlign: 'center', color: 'black'}} accessoryRight={props =><Svg width="20" height="15" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
+            </Svg>}/>
+            <Button onPress={() => this.award()} style={{backgroundColor: '#F10063', borderRadius: 20, borderColor: 'white'}}>Award Gems</Button>     
+          </Layout>
+        </Overlay>  
+
+        <Overlay isVisible={this.state.showMoreOptions} onBackdropPress={() => this.setState({showMoreOptions: !this.state.showMoreOptions})}
+         overlayStyle={{width: "80%", minHeight: "30%", borderRadius: 50, backgroundColor: '#fff', paddingHorizontal: 30 }}  animationType="fade">
+          <Layout level="4" style={{flex: 1, justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row', backgroundColor: '#fff'}}>
+          {this.state.data[0] ? this.state.user == this.state.data[0].user ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color='#2E3A59' /></TouchableOpacity>
+           : null}
+           <TouchableOpacity
+             onPress={() => this.addtoBookMarks()}><Icon name="bookmark" size={50} color='#2E3A59' /></TouchableOpacity>
+           <TouchableOpacity 
+              onPress={() => {
+                this.state.imageUrls[this.state.currentPostIdx] && this.state.imageUrls[this.state.currentPostIdx].length
+                    ? this.state.imageUrls[this.state.currentPostIdx].map((uri) => (
+                      Clipboard.setString(uri)
+                    )) : null
+                ToastAndroid.show('Copied Meme Link', ToastAndroid.SHORT)
+              }}><Icon name="copy" size={50} color='#2E3A59' /></TouchableOpacity>
+          {this.state.user == this.state.data[0].user ? <TouchableOpacity 
+              onPress={() => {  this.deleteMeme()
+              }}><Icon name="ios-trash-bin" size={50} color='#2E3A59' /></TouchableOpacity>    : null}
+          </Layout>
+          </Overlay>
+          <Overlay isVisible={this.state.reportPost} onBackdropPress={() => this.setState({reportPost: !this.state.reportPost})}
+         overlayStyle={{width: "80%",  height: "50%", borderRadius: 50, backgroundColor:'#fff', paddingHorizontal: 30 }}  animationType="fade">
+          <Layout level="4" style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor:'#fff'}}>
+           <Input placeholder="Let us know what is wrong" maxLength={100} textStyle={{minHeight: 60, color: 'black'}} style={{backgroundColor: 'transparent'}}
+           multiline={true}  onChangeText={val => this.setState({reportReason: val})} />
+           <Button status="danger" style={{margin: 10, alignSelf: 'flex-end'}}
+           onPress={() => this.reportPost()}>Report</Button>
+          </Layout>
+          </Overlay>
+
           {this.state.showCongrats ? <FastImage source={{uri: 'https://media.giphy.com/media/58FB1ly2YjmVzcaOYv/giphy.gif', 
           priority: FastImage.priority.high}} style={{
             width:"100%", height: "100%", top: 0, position: 'absolute', alignSelf: 'center'
@@ -1909,6 +2082,7 @@ class ViewPost extends React.Component{
           id: id,
           uri: this.state.imageUrls[0][0]
         }]))
+        ToastAndroid.show('Bookmarked this Meme', ToastAndroid.SHORT)
       }else{
         let newAdd = [{ id: id, uri: this.state.imageUrls[0][0] }]
         let previousData = JSON.parse(previous)
@@ -2139,12 +2313,13 @@ class ViewPost extends React.Component{
         <View style={{width: '100%', marginTop: '5%', alignSelf: 'center', alignContent: 'center', }}>
         <View style={{flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center'}}>
           {item.reUser ?
-            <><TouchableOpacity style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor: '#fff', 
-            opacity: this.state.activeStory == 'main' ? 1 : 0.5}} onPress={() => item.reUser ?  this.setState({activeStory: 'main'}) : this.slide('previous')} />
-            <TouchableOpacity style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor:'#00D2EF', 
-            opacity: this.state.activeStory == 'remix' ? 1 : 0.5}} onPress={() => item.reUser ? this.setState({activeStory: 'remix'}) : this.slide('next')}/>
+            <><View style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor:  '#fff', 
+            opacity: this.state.activeStory == 'main' ? 1 : 0.5}} />
+            <View style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor:'#fff', 
+            opacity: this.state.activeStory == 'remix' ? 1 : 0.5}} />
             </> 
             : <TouchableOpacity style={{height: 2.5, width: Dimensions.get('window').width/1.5, backgroundColor:'#fff'}}></TouchableOpacity>}
+
            <FIcon name="x" color="white" size={40} onPress={() => this.props.navigation.goBack()} style={{alignSelf: 'flex-end'}} />       
         </View> 
         <View>
@@ -2171,7 +2346,8 @@ class ViewPost extends React.Component{
             onPress={() => this.props.navigation.navigate('Profile', {user: item.reUser, dark: this.state.dark})} 
             style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.reUser} </NativeText>
             </View> : null} {item.text ? this.formatText(item.text) : '...'}</NativeText>}
-            accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={20} 
+            accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={25} style={{marginBottom: 30,
+               marginRight: 20}}
             onPress={() => this.setState({moreOptions: true}) }/>}
           />
         </View>
@@ -2325,37 +2501,38 @@ class ViewPost extends React.Component{
     }
   slide = async(type) => {
     if(type == 'next'){
-        Animated.spring(this.state.x, {
+      if(this.state.data[0].reUser && this.state.activeStory == 'main'){
+        this.setState({activeStory: 'remix'})
+      }else{
+        this.nextPost('next')
+      }
+        Animated.timing(this.state.x, {
           toValue: -(Dimensions.get('window').width),
           useNativeDriver: false,
-          duration: 500
+          duration: 500,
+          easing: Easing.linear()
         }).start(() => {
-          if(this.state.data[0].reUser && this.state.activeStory == 'main'){
-            this.setState({activeStory: 'remix'})
-            this.state.x.setValue(200)
+            this.state.x.setValue(300)
             Animated.spring(this.state.x, {
               toValue: 0,
               useNativeDriver: false
             }).start()
-          }else{
-            this.nextPost('next')
-          }
         })
     }else{
-      Animated.spring(this.state.x, {
+      if(this.state.data[0].reUser && this.state.activeStory == 'remix'){
+        this.setState({activeStory: 'main'})
+      }else{
+        this.nextPost('previous')
+      }
+      Animated.timing(this.state.x, {
         toValue: Dimensions.get('window').width,
         useNativeDriver: false
       }).start(() => {
-        if(this.state.data[0].reUser && this.state.activeStory == 'remix'){
-          this.setState({activeStory: 'main'})
           this.state.x.setValue(-200)
           Animated.spring(this.state.x, {
             toValue: 0,
             useNativeDriver: false
           }).start()
-        }else{
-          this.nextPost('previous')
-        }
       })
     }
   }  
@@ -2383,11 +2560,11 @@ class ViewPost extends React.Component{
       <ApplicationProvider {...eva}
     theme={eva.dark}>
         <Layout style={{flex: 1, backgroundColor: 'black'}}>
-          <ScrollView style={{  flex: 1, paddingTop: 55 }}>
-           <TouchableWithoutFeedback onPress={() => this.slide('next')}>
+          <ScrollView style={{  flex: 1, paddingTop: 30 }}>
+           <TouchableWithoutFeedback onPress={() => this.state.data[0].reUser ? this.state.activeStory == 'remix' ? this.slide('next') : this.setState({activeStory: 'remix'}) : this.slide('next')}>
              <View  style={{height: Dimensions.get('window').height/2, width: 100, position: 'absolute', zIndex: 100, right: 0, top: 100
             }} /></TouchableWithoutFeedback> 
-          <TouchableWithoutFeedback onPress={() => this.slide('previous')}>
+          <TouchableWithoutFeedback onPress={() => this.state.data[0].reUser ? this.state.activeStory == 'main' ? this.slide('previous') : this.setState({activeStory: 'main'}) : this.slide('previous')}>
              <View  style={{height: Dimensions.get('window').height/2, width: 100, position: 'absolute', zIndex: 100, left: 0, top: 100
             }} /></TouchableWithoutFeedback>    
         <FlatList
@@ -2560,7 +2737,12 @@ class ViewPost extends React.Component{
             width:"100%", height: "100%", top: 0, position: 'absolute', alignSelf: 'center'
           }} /> : null}
 
-         <View style={{position: 'absolute', bottom: 0, zIndex: 20, width: Dimensions.get('window').width}}>
+         <Animated.View style={{position: 'absolute', bottom: 0, zIndex: 20, width: Dimensions.get('window').width, 
+        transform: [
+          {
+            translateX: this.state.x
+          }
+        ]}}>
          <View style={{ flexDirection: 'row', backgroundColor: 'transparent', marginVertical: 10, paddingLeft: 10}}>
         <View>
         <TouchableOpacity style={{ borderRadius: 35, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 9,
@@ -2576,6 +2758,9 @@ class ViewPost extends React.Component{
               </Svg>
               }
         </TouchableOpacity>
+        {this.state.data[0].loves > 0 ?
+        <Text style={{textAlign: 'center', color: this.state.data[0].isliked ? 
+        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{this.state.data[0].loves}</Text> : null}
         </View>
         <View>
         <TouchableOpacity style={{borderRadius: 5, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 10,
@@ -2593,6 +2778,8 @@ class ViewPost extends React.Component{
             </G>
           </Svg>
         </TouchableOpacity>
+        {parseInt(this.state.data[0].remixCount) > 0 ?
+        <Text style={{textAlign: 'center', color: '#00E0FF' }}>{this.state.data[0].remixCount}</Text> : null}
         </View>
         <View>
         <TouchableOpacity style={{ marginLeft: 5, paddingTop: 0, alignItems: 'center', justifyContent: 'center'}}
@@ -2636,7 +2823,7 @@ class ViewPost extends React.Component{
             this.setState({showComments: true, currentPostId: this.state.data[0].id, currentPostAuthor: this.state.data[0].user})
             this.fetchComments(this.state.data[0].id)
           }} 
-          multiline={true}/></View>
+          multiline={true}/></Animated.View>
         </Layout>
       </ApplicationProvider>
     )
@@ -2802,7 +2989,8 @@ class Create extends React.Component{
             }
           }
          } else{
-          this.setState({images: [...this.state.images, this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri], numImages: this.state.numImages + 1})
+          this.setState({images: this.state.showPhotosFrom == 'templates' ?
+          [item.url] :  [...this.state.images, item.node.image.uri], numImages: this.state.showPhotosFrom == 'templates' ? 1 : this.state.numImages + 1})
          }
       }}
        style={{backgroundColor: 'black', margin: 5/3, }}>
@@ -3302,10 +3490,11 @@ class Create extends React.Component{
         <View style={{ height: (Dimensions.get('window').height * 60) / 100, width: '100%', flexDirection: 'row', position: 'absolute',
          marginTop: this.state.textAtTop && this.state.textArea ? 70 : 0, backgroundColor: 'transparent' }}>
          <SketchCanvas
-            style={{ flex: 1, backgroundColor: 'transparent', zIndex: this.state.isResizing ? -10 : -2 }}
+            style={{ flex: 1, backgroundColor: 'transparent', zIndex: this.state.isResizing ? -10 : -2,}}
             strokeColor={this.state.strokeColor}
             strokeWidth={this.state.strokeWidth}
             ref={ref => this.canvas = ref}
+            touchEnabled={this.state.showDrawTools}
           />
           </View>
           {this.state.texts.map((item, idx) => {
@@ -3389,11 +3578,16 @@ class Create extends React.Component{
       <Icon name="text" size={30} color={this.state.showTextTools ? "#45DAFF" : "white"} 
         onPress={() => { this.addText() }}/>
       <View>
-      <Icon name="brush" size={30} color={this.state.showDrawTools ? "#45DAFF" : "white"} onPress={() => this.setState({showDrawTools: true, 
-        showTextTools: false, showStickerTools: false, isResizing: false}) }/>
-      {this.state.showDrawTools ? <TouchableOpacity onPress={() => this.setState({showDrawTools: false}) } 
-       style={{backgroundColor: '#05FF00', padding: 3, height: 42, borderRadius: 20, marginTop: 2}}>
-        <Icon size={35} name="md-checkmark-done" color="white"  /></TouchableOpacity> : null} 
+      <Icon name={this.state.showDrawTools ? "md-checkmark-done" : "brush"}
+       size={30} color={this.state.showDrawTools ? "#45DAFF" : "white"} onPress={() => {
+         if(this.state.showDrawTools){
+           this.setState({showDrawTools: false})
+         }else{
+          this.setState({showDrawTools: true, 
+            showTextTools: false, showStickerTools: false, isResizing: false}) 
+         }
+        }}/>
+
       </View>
       <View>
         <Icon name="crop" size={30} color={this.state.isResizing ? "#45DAFF" : "white"}
@@ -3520,7 +3714,7 @@ class Create extends React.Component{
     </Modal>
     {this.state.showStickerTools ? 
     <Icon size={40} name="arrow-undo-circle-outline" color="white" 
-    style={{marginHorizontal: 10, top:50, elevation: 50, zIndex: 50, right: 30,  position: 'absolute'}}
+    style={{marginHorizontal: 10, top:80, elevation: 50, zIndex: 50, right: 30,  position: 'absolute'}}
        onPress={() => this.gestures.reset((prevStyles) => {
         console.log(prevStyles)})} />: null}
    {this.state.showDrawTools ? 
@@ -3540,7 +3734,7 @@ class Create extends React.Component{
        showsVerticalScrollIndicator ={false}
        extraData={this.state}
       /></View>
-      <View style={{top:50, elevation: 50, zIndex: 50, right: 30,  position: 'absolute', flexDirection: 'row'}}>
+      <View style={{top:80, elevation: 50, zIndex: 50, right: 30,  position: 'absolute', flexDirection: 'row'}}>
       <TouchableOpacity onPress={() => this.canvas.undo() }>
       <Icon size={40} name="arrow-undo-circle-outline" color="white" style={{marginHorizontal: 10}} /></TouchableOpacity>
       <TouchableOpacity onPress={() => this.setState({strokeColor: 'transparent'}) }>
@@ -3552,7 +3746,12 @@ class Create extends React.Component{
     }else if(this.state.finalize && !this.state.Posted){
       return(
         <View style={{flex: 1, backgroundColor: 'black'}}> 
-          <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Share</NativeText>
+         <TouchableOpacity style={{marginTop: 30, marginLeft: 20, position: 'absolute', zIndex: 10}} 
+         onPress={() => this.setState({finalize: false, showTextTools: false, showStickerTools: false, showImageTools: false,
+            isResizing: false})}>
+           <Icon name="arrow-back-circle" color="#00BBFF" size={50}/>
+          </TouchableOpacity>
+          <NativeText style={{color: 'white', top: 30, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Share</NativeText>
           <TextInput style={{backgroundColor:'#747474', color: '#fff', width: '100%',  padding: 15, marginBottom: 0,
           fontSize: 15, 
           textAlign: 'center', margin: 0}}
@@ -3582,8 +3781,8 @@ class Create extends React.Component{
       <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Meme Posted</NativeText>
       <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '95%', alignSelf: 'center',
         marginTop: 0}} resizeMode="contain" /> 
-     <TouchableOpacity style={{backgroundColor: 'transparent', padding: 10, borderColor: 'white', borderWidth: 1, width: '95%', borderTopLeftRadius: 0, borderTopRightRadius: 0,
-     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center',
+     <TouchableOpacity style={{backgroundColor: 'transparent', padding: 10, borderColor: 'white', borderWidth: 1, width: '95%', 
+     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, marginTop: 10, alignSelf: 'center',
        justifyContent: 'center'}} 
           onPress={() => Share.share({message: this.state.meme}) }>  
       <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5, textAlign: 'center', 
@@ -4748,7 +4947,9 @@ const TabNavigator = createMaterialTopTabNavigator({
     }
   },
   Home: {
-    screen: HomeScreen,
+    screen: copilot({
+      stepNumberComponent: () => { return null },
+    })(HomeScreen),
     
   },  
   Notifications : {
@@ -4799,7 +5000,7 @@ const TabNavigator = createMaterialTopTabNavigator({
     },
     tabStyle: {flexDirection: 'column', paddingTop: 25, paddingBottom: 20, elevation: 0},
     showIcon: true,
-    iconStyle: {width: 40},
+    iconStyle: {width: 35},
     indicatorStyle: {backgroundColor: 'transparent'}
   },
 })
