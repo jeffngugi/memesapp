@@ -1,5 +1,6 @@
 import React from 'react'
-import {View, TouchableOpacity, FlatList, ScrollView, Text as NativeText, ImageBackground, BackHandler, Dimensions, Share} from 'react-native'
+import {View, TouchableOpacity, FlatList, ScrollView, Text as NativeText, ImageBackground, BackHandler, Dimensions, Share, 
+   ToastAndroid} from 'react-native'
 import * as eva from '@eva-design/eva'
 import { ApplicationProvider, Layout, Button, ButtonGroup,
    Input, Avatar, List, ListItem, Toggle, Text, Select, SelectItem, IndexPath } from '@ui-kitten/components'
@@ -24,25 +25,9 @@ import RNIap, {
 import {PowerTranslator, ProviderTypes, TranslatorConfiguration} from 'react-native-power-translator'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import io from 'socket.io-client'
+import ImagePicker from 'react-native-image-picker'
+import RNFetchBlob from 'rn-fetch-blob'
 
-var sunglasses = [
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510919139196948/noun_Sunglasses_29025973x.png', flairPrice: 80},
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510914323349534/noun_mask_2845555_13x.png', flairPrice: 150},
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510910296686612/noun_fancy_glasses_35715303x.png', flairPrice: 150},
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510915556474880/noun_Sunglasses_10062153x.png', flairPrice: 180},
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510916747526154/noun_Sunglasses_11582603x.png', flairPrice: 180},
-    {sgURL: 'https://cdn.discordapp.com/attachments/770876582415171604/778510917692293150/noun_Sunglasses_18565193x.png', flairPrice: 180}
-  ]
-  var flairs = [
-    {flairURL: 'https://media.giphy.com/media/aRZ4vTsHnyW6A/giphy.gif', flairPrice: 0},
-    {flairURL: 'https://media.tenor.com/images/b168b139c01a69e19e14bc609666ef2b/tenor.gif', flairPrice: 0},
-    {flairURL: 'https://media.giphy.com/media/l378wcSfS7eXWQgla/giphy.gif', flairPrice: 0},
-    {flairURL: 'https://media.giphy.com/media/zNbqGADAp9bSU/giphy.gif', flairPrice: 0},
-    {flairURL: 'https://media.giphy.com/media/3og0IMh7rRNPtNSK9q/giphy.gif', flairPrice: 100},
-    {flairURL: 'https://media.giphy.com/media/3o6ZtgnmZDZeAshxYY/giphy.gif', flairPrice: 100},
-    {flairURL: 'https://media.giphy.com/media/YWf50NNii3r4k/giphy.gif', flairPrice: 150},
-    {flairURL: 'https://media.giphy.com/media/l3q2Dh5BA4zRFSwak/giphy.gif', flairPrice: 150}
-  ]
   const itemSkus = Platform.select({
     ios: [
       'com.example.coins100'
@@ -86,7 +71,9 @@ var sunglasses = [
       reportReason: '',
       followtype: 'following',
       followData: [],
-      language: 'en'
+      language: 'en',
+      flairs: [],
+      sunglasses: []
     }
     constructor(props){
       super(props)
@@ -226,6 +213,8 @@ var sunglasses = [
       .then((responseJson) => {
         if(responseJson){
           this.setState({data: responseJson, loading: false, profileUser: user})
+          this.getFlairs('flairs')
+          this.getFlairs('sunglasses')
          this.props.navigation.setParams({fullName: responseJson.fullName})
          if(responseJson.isfollowing == 'yes'){
            this.props.navigation.setParams({ isfollowing :  'yes' })
@@ -241,6 +230,24 @@ var sunglasses = [
         }
          
        })
+    }
+    getFlairs(type){
+      fetch('https://lishup.com/app/profileFlairs.php?type=' + type, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+      .then(response => response.json())
+      .then(responseJson => {
+        if(type == "flairs"){
+          this.setState({flairs: responseJson})
+        }else{
+          this.setState({sunglasses: responseJson})
+        }
+        console.log(responseJson)
+      })
     }
     follow(user, type){
       if(type == "list"){
@@ -393,13 +400,15 @@ var sunglasses = [
       ToastAndroid.show('Changing to your awesome Flair', ToastAndroid.SHORT)
       let data = this.state.data
       if(type == 'profile_flair'){
-        data.flair = flairs[index].flairURL
-        var flairURL = flairs[index].flairURL
+        data.flair = this.state.flairs[index].url
+        var flairURL = this.state.flairs[index].url
+        var flairPrice = this.state.flairs[index].price
       }else{
-        data.sunglass = sunglasses[index].sgURL
-        var flairURL = sunglasses[index].sgURL
+        data.sunglass = this.state.sunglasses[index].url
+        var flairURL = this.state.sunglasses[index].url
+        var flairPrice = this.state.sunglasses[index].price
       }
-      data.points = data.points - flairs[index].flairPrice
+      data.points = data.points - parseInt(flairPrice)
       this.setState({data: data})
       fetch('https://lishup.com/app/updateFlair.php', {
             method: 'POST',
@@ -409,7 +418,7 @@ var sunglasses = [
             },
             body: JSON.stringify({ 
              flair: flairURL,
-             cost: flairs[index].flairPrice,
+             cost: flairPrice,
              user: this.state.user,
              type: type
             }),
@@ -616,35 +625,23 @@ var sunglasses = [
               <PowerTranslator text="None" 
                         target={this.state.language} />}</Text>
                 </TouchableOpacity>
-                 <TouchableOpacity onPress={() =>  this.setState({previewFlair: true, previewIndex: 0})  }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/aRZ4vTsHnyW6A/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"
+                <FlatList
+                data={this.state.flairs}
+                renderItem={({item, index}) => (
+                 <TouchableOpacity onPress={() => {
+                  this.setState({previewFlair: true}) 
+                  setTimeout(() => this._previewCarousel.snapToItem(index), 500)
+                 }  }>
+                <FastImage source={{uri: item.url}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"
                    /></TouchableOpacity>
-                 <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 1})  }>
-                <FastImage source={{uri: 'https://media.tenor.com/images/b168b139c01a69e19e14bc609666ef2b/tenor.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>   
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 2}) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/l378wcSfS7eXWQgla/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 3 }) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/zNbqGADAp9bSU/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 4 }) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/3og0IMh7rRNPtNSK9q/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 5 }) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/3o6ZtgnmZDZeAshxYY/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 6 }) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/YWf50NNii3r4k/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewFlair: true, previewIndex: 7 }) }>
-                <FastImage source={{uri: 'https://media.giphy.com/media/l3q2Dh5BA4zRFSwak/giphy.gif'}} style={{height: 200, width: 200, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="cover"/>
-                </TouchableOpacity>
+                )}
+                horizontal
+                />
               </ScrollView>
               <Text category="h6" style={{marginLeft: 10, marginVertical: 10}}>{this.state.language == 'en' ? 'Sunglasses' : 
               <PowerTranslator text="Sunglasses" 
                         target={this.state.language} />}</Text>
-              <ScrollView style={{backgroundColor:'#fff', width: "100%" }}
+              <ScrollView style={{backgroundColor:'#fff', width: "100%", paddingBottom: 50}}
                horizontal={true}>
                  <TouchableOpacity onPress={() => this.removeFlair('profile_sunglass') } style={{height: 100, width: 100, borderRadius: 10, margin: 10,
                    justifyContent: 'center', backgroundColor: 'rgba(0, 0, 0, 0.1)'}}>
@@ -652,24 +649,18 @@ var sunglasses = [
                    >{this.state.language == 'en' ? 'None' : 
                    <PowerTranslator text="None" 
                              target={this.state.language} />}</Text></TouchableOpacity>
-                 <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 0}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510919139196948/noun_Sunglasses_29025973x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 1}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510914323349534/noun_mask_2845555_13x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 2}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510910296686612/noun_fancy_glasses_35715303x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>
-                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 3}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510915556474880/noun_Sunglasses_10062153x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>     
-                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 4}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510916747526154/noun_Sunglasses_11582603x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>      
-                <TouchableOpacity onPress={() => this.setState({previewSunglass: true, previewIndex: 5}) }>
-                <FastImage source={{uri: 'https://cdn.discordapp.com/attachments/770876582415171604/778510917692293150/noun_Sunglasses_18565193x.png'}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
-                   /></TouchableOpacity>       
+                   <FlatList
+                data={this.state.sunglasses}
+                renderItem={({item, index}) => (
+                  <TouchableOpacity onPress={() => {
+                    this.setState({previewSunglass: true}) 
+                    setTimeout(() => this._sgPreviewCarousel.snapToItem(index), 500)
+                  }}>
+                  <FastImage source={{uri: item.url}} style={{height: 100, width: 100, borderRadius: 10, alignSelf: 'center', margin: 10}} resizeMode="contain"
+                     /></TouchableOpacity>  
+                )}
+                horizontal
+                />    
               </ScrollView>
             </View>
         )
@@ -678,7 +669,7 @@ var sunglasses = [
     renderPreviewFlair = ({item, index}) => (
       <View style={{width: "90%", height: "90%", justifyContent: 'center',
       borderRadius: 30, margin: "5%" }}>
-    <ImageBackground source={{uri: item.flairURL}} style={{flex: 1,
+    <ImageBackground source={{uri: item.url}} style={{flex: 1,
       borderRadius: 30, alignContent: 'center', justifyContent: 'center', overflow: 'hidden', marginVertical: 20}} 
       imageStyle={{borderRadius: 30}}>
       <Avatar 
@@ -687,7 +678,7 @@ var sunglasses = [
            source={{uri: this.state.data.pic}} 
         />
     </ImageBackground>    
-    <Button onPress={() => this.buyFlair('profile_flair', index)}>Grab it {item.flairPrice} Gems</Button>
+    <Button onPress={() => this.buyFlair('profile_flair', index)}>Grab it {item.price} Gems</Button>
     </View>
     )
     renderPreviewSg = ({item, index}) => (
@@ -701,10 +692,10 @@ var sunglasses = [
                 height: 100}}
               source={{uri: this.state.data.pic}} 
             />
-            <FastImage source={{uri: item.sgURL }} 
+            <FastImage source={{uri: item.url }} 
               style={{height: 80, width: 80, position: 'absolute', elevation: 25, alignSelf: 'center'}} resizeMode="contain" />
          </ImageBackground>    
-         <Button onPress={() => this.buyFlair('profile_sunglass', index)}>Snatch it {item.flairPrice} Gems</Button>
+         <Button onPress={() => this.buyFlair('profile_sunglass', index)}>Snatch it {item.price} Gems</Button>
       </View>
     )
     getShowCase(which){
@@ -869,14 +860,26 @@ var sunglasses = [
             <Overlay isVisible={this.state.previewFlair} onBackdropPress={() => this.setState({previewFlair: !this.state.previewFlair})}
            overlayStyle={{width: "80%", height: "60%", backgroundColor: 'transparent', elevation: 0, zIndex: 30 }}  animationType="slide">
                <Carousel
-                ref={(c) => { this._PreviewCarousel = c; }}
-                data={flairs}
+                ref={(ref) => this._previewCarousel = ref}
+                data={this.state.flairs}
                 renderItem={this.renderPreviewFlair}
                 sliderWidth={(Dimensions.get('window').width * 80) / 100}
                 sliderHeight={(Dimensions.get('window').height * 50) / 100}
                 itemWidth={(Dimensions.get('window').width * 80) / 100}
-                firstItem={this.state.previewIndex}
+                enableMomentum={true}
               />
+              <View style={{flexDirection: 'row-reverse', justifyContent: 'space-between'}}>
+              <TouchableOpacity style={{backgroundColor: '#00BBFF', borderRadius: 25, height: 50, width: 50, 
+                justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-end'}}
+                onPress={() => this._previewCarousel.snapToNext()}>
+                <FIcon name="arrow-right" size={30} color="white"/>
+              </TouchableOpacity>
+              <TouchableOpacity style={{backgroundColor: '#00BBFF', borderRadius: 25, height: 50, width: 50, 
+                justifyContent: 'center', alignItems: 'center', alignSelf: 'flex-start'}}
+                onPress={() => this._previewCarousel.snapToPrev()}>
+                <FIcon name="arrow-left" size={30} color="white"/>
+              </TouchableOpacity>
+              </View>
             </Overlay>
             <Overlay isVisible={this.state.follows} onBackdropPress={() => this.setState({follows: !this.state.follows})}
            overlayStyle={{width: "100%", height: "90%", backgroundColor: 'rgba(0, 0, 0, 0.9)', bottom: 0, position: 'absolute', padding: 20,
@@ -924,12 +927,12 @@ var sunglasses = [
            overlayStyle={{width: "80%", height: "60%", backgroundColor: 'transparent', elevation: 0, zIndex: 30 }}  animationType="slide">
                <Carousel
                 ref={(c) => { this._sgPreviewCarousel = c; }}
-                data={sunglasses}
+                data={this.state.sunglasses}
                 renderItem={this.renderPreviewSg}
                 sliderWidth={(Dimensions.get('window').width * 80) / 100}
                 sliderHeight={(Dimensions.get('window').height * 50) / 100}
                 itemWidth={(Dimensions.get('window').width * 80) / 100}
-                firstItem={this.state.previewIndex}
+                enableMomentum={true}
               />
             </Overlay>
             </Layout>
