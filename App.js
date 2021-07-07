@@ -7,7 +7,7 @@ import {
   View,
   StatusBar,
   TouchableOpacity, TouchableWithoutFeedback,
-  ActivityIndicator,
+  KeyboardAvoidingView,
   Dimensions,
   Modal,
   FlatList,
@@ -21,6 +21,7 @@ import 'react-native-gesture-handler'
 import { createAppContainer } from 'react-navigation'
 import { createStackNavigator, StackViewTransitionConfigs } from 'react-navigation-stack'
 import { createMaterialTopTabNavigator } from 'react-navigation-tabs'
+import firestore from '@react-native-firebase/firestore'
 var notifyBadge = 0;
 const incBadge=(number)=>{
   notifyBadge = number
@@ -41,7 +42,6 @@ import Carousel from 'react-native-snap-carousel'
 import Svg, {
  Path, Circle, Rect, G, Defs, Filter
 } from 'react-native-svg'
-import LinearGradient from 'react-native-linear-gradient'
 
 import FastImage from 'react-native-fast-image'
 import ScaledImage from './ScalableImage'
@@ -67,7 +67,6 @@ import { GiftedChat, Bubble, Send, MessageStatusIndicator, Composer, MessageImag
 import { GoogleSignin, GoogleSigninButton } from '@react-native-community/google-signin'
 import auth from '@react-native-firebase/auth'
 import PhoneInput from '@sesamsolutions/phone-input'
-import InAppReview from 'react-native-in-app-review'
 import RNRestart from 'react-native-restart'
 import messaging from '@react-native-firebase/messaging'
 import ReceiveSharingIntent from 'react-native-receive-sharing-intent'
@@ -82,7 +81,6 @@ import Profile from './screens/Profile'
 import Create from './screens/MemeMaker'
 
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
-
 
 const CopilotView = walkthroughable(View)
 const CopilotTouchableOpacity = walkthroughable(TouchableOpacity)
@@ -818,7 +816,7 @@ class Authentication extends React.Component{
           {...eva}
           theme={eva.light }> 
             <Layout style={{flex: 1, paddingTop: 20, alignItems: 'center', backgroundColor: '#FFD362'}}>
-            <View style={{alignSelf: 'center', width: "90%"}}> 
+            <KeyboardAvoidingView style={{alignSelf: 'center', width: "90%"}} behavior="height"> 
                   <Text category="h4" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Sign In:</Text>
                   <Text category="h5" style={{fontWeight: 'bold', marginTop: 20, textAlign: 'center'}}>Enter Email/ Phone #</Text>
             <Input
@@ -841,7 +839,7 @@ class Authentication extends React.Component{
                   <Button disabled={!this.state.username && !this.state.passcode} onPress={() => this.fetchlogin('native')} 
                   style={{width: "80%", borderColor: 'transparent', alignSelf: 'center',
                   backgroundColor: '#00BBFF', borderRadius: 20,  elevation: 2, marginTop: 20}} size="giant">Sign In</Button>
-              </View>
+              </KeyboardAvoidingView>
             </Layout>
           </ApplicationProvider>
           )
@@ -914,6 +912,7 @@ class Authentication extends React.Component{
   }
 }
 }
+
 class HomeScreen extends React.PureComponent{
   static navigationOptions = ({navigation,screenProps}) => {
     return {
@@ -960,17 +959,6 @@ class HomeScreen extends React.PureComponent{
       reportPost: false,
       reportReason: '',
     }
-    this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
-    this.socket.on('connect', function (data) {
-     //console.log('connected to socket')
-    })
-  }
-  shouldComponentUpdate(nextProps, nextState) {
-    if(nextState.currentPostId != this.state.currentPostId || nextState.currentPostAuthor != this.state.currentPostAuthor){
-      return false
-    }
-
-    return true
   }
   async componentDidMount(){
     const { params } = this.props.navigation.state
@@ -1018,26 +1006,6 @@ class HomeScreen extends React.PureComponent{
     this.setupStarting()
     TranslatorConfiguration.setConfig(ProviderTypes.Google, 'AIzaSyBu1Mz7yL95Y1G0tUn_jtdc2GTuJQY7zto', lan ? lan : 'en')
     
-
-    this.socket.on('newComment', data => {
-
-      if(Object.keys(this.state.data).length > 0){
-        for (var i = 0; i < Object.keys(this.state.data).length; i++) {
-          if (this.state.data[i].id == data.id) {
-              let result = this.state.data
-              result[i].comments = result[i].comments + 1
-              this.setState({data: result})
-          }
-        }
-    }
-
-      if(this.state.showComments){
-      if(this.state.currentPostId == data.id){
-        let newcomment = {id: data.id, user: data.user, text: data.text, time: data.time, image: data.url, replyId: data.replyId}
-        this.setState({ comments: [newcomment, ...this.state.comments]  })
-      }
-    }
-  })
   StatusBar.setBackgroundColor("rgba(0,0,0,0)")
   StatusBar.setBarStyle("light-content")
   StatusBar.setTranslucent(true)
@@ -1151,7 +1119,20 @@ class HomeScreen extends React.PureComponent{
     {cancelable: true})
   }
   fetch(user, changeFeed){
-    const { params } = this.props.navigation.state
+    firestore()
+    .collection('Posts')
+    .limit(20)
+    .get()
+    .then(snapshot => {
+      this.setState({
+        data: snapshot._docs,
+        loading: false,
+        isOffline: false
+     })
+    })
+ }
+oldFetch(){
+  const { params } = this.props.navigation.state
     const userFromhere = params ? params.user : null
 
     if(changeFeed){
@@ -1189,7 +1170,7 @@ class HomeScreen extends React.PureComponent{
          console.log(error)
          ToastAndroid.show('Something Went Wrong', ToastAndroid.SHORT)
       })
-  }
+}
   fetchImage(image) {
     return fetch('https://lishup.com/app/fetch-image.php', {
       method: 'POST',
@@ -1202,25 +1183,6 @@ class HomeScreen extends React.PureComponent{
       .then((response) => response.json())
       .then((responseJson) => {
         return responseJson.filter(({ url }) => url).map(({ url }) => url)
-      })
-  }
-  fetchComments(id) {
-    fetch('https://lishup.com/app/getcomments.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ lid: id }),
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        if(responseJson){
-          this.setState({comments: responseJson, loadingComments: false})
-          console.log(this.state.comments)
-        }else{
-          this.setState({loadingComments: false})
-        }
       })
   }
   seperateLoves(data){
@@ -1272,23 +1234,45 @@ class HomeScreen extends React.PureComponent{
       }
     })
   }
-  renderPosts = ({item, index}) => (
+  timeSince(timeStamp) {
+    var now = new Date(),
+      secondsPast = (now.getTime() - timeStamp) / 1000;
+    if (secondsPast < 60) {
+      return parseInt(secondsPast) + 's';
+    }
+    if (secondsPast < 3600) {
+      return parseInt(secondsPast / 60) + 'm';
+    }
+    if (secondsPast <= 86400) {
+      return parseInt(secondsPast / 3600) + 'h';
+    }
+    if (secondsPast > 86400) {
+      day = timeStamp.getDate();
+      month = timeStamp.toDateString().match(/ [a-zA-Z]*/)[0].replace(" ", "");
+      year = timeStamp.getFullYear() == now.getFullYear() ? "" : " " + timeStamp.getFullYear();
+      return day + " " + month + year;
+    }
+  }
+  renderPosts = ({item, index}) => {
+    let ref = item._ref._documentPath._parts[1]
+    item = item._data
+    return (
     <View style={{ marginVertical: 10, 
       padding: 10, backgroundColor: 'white', borderRadius: 30, elevation: 2}} 
         key={item.id}>
         <View>
           <ListItem
             title={props => <Text style={{ fontSize:15, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : '#A7A7A7', fontWeight: 'bold'}}>
-            {item.user}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
-              {item.time}</Text> : <PowerTranslator text={item.time} 
+            {item.userName}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
+              {this.timeSince(item.time)}</Text> : <PowerTranslator text={this.timeSince(item.time)} 
             style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}} target={this.state.language}/>}
             </Text>}
             accessoryLeft={evaProps => 
-              <Avatar source={{uri: item.userpic}} style={{width: 38, height: 38, borderRadius: 38/2, marginTop: 2}} />}
-            onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
+              <Avatar source={{uri: item.userPhoto}} style={{width: 38, height: 38, borderRadius: 38/2, marginTop: 2}} />}
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.userName, dark: this.state.dark })}
             style={{backgroundColor: 'transparent', elevation: 5, zIndex: 5, }}
             description={props => 
-            <NativeText style={{left: 8, elevation: 4, zIndex: 4}}>{item.reUser ? 
+            <NativeText style={{left: 8, elevation: 4, zIndex: 4}}>{item.remixUser ? 
               <View style={{flexDirection: 'row'}}>
               <Svg width="20" height="18" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginTop: 5}}>
               <G filter="url(#filter0_i)">
@@ -1297,9 +1281,9 @@ class HomeScreen extends React.PureComponent{
               </G>
             </Svg>
             <NativeText 
-            onPress={() => this.props.navigation.navigate('Profile', {user: item.reUser, dark: this.state.dark})} 
-            style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.reUser} </NativeText>
-            </View> : null} {item.text ? this.formatText(item.text) : '...'}</NativeText>}
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.remixUser, dark: this.state.dark})} 
+            style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.remixUser} </NativeText>
+            </View> : null} {item.caption ? this.formatText(item.caption) : '...'}</NativeText>}
             accessoryRight={evaProps => <TouchableOpacity onPress={() => 
               this.setState({showMoreOptions: true, currentPostIdx: index}) }>
               <EnIcon name="dots-three-horizontal" color="#ABABAB" size={25} />
@@ -1307,20 +1291,19 @@ class HomeScreen extends React.PureComponent{
           />
         </View>
         <View style={{ borderRadius: 5, padding: 0}}>
-        {item.remixUri ? 
-        this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
+        {item.remixUri ?
         <Carousel
               data={[
                 {uri: item.remixUri, id: item.id},
-                {uri: uri, id: item.id},
+                {uri: item.photo, id: item.id},
               ]}
               renderItem={({item, idx}) => (
                 <TouchableWithoutFeedback onPress={() => 
-                  this.props.navigation.navigate('ViewPost', {id: parseInt(item.id), dark: this.state.dark })}>
+                  this.props.navigation.navigate('ViewPost', {doc: ref, dark: this.state.dark })}>
                   <FastImage
                   source={{uri: item.uri}}
                   style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, marginLeft: '2.5%'}}
+                  
                 /></TouchableWithoutFeedback>
               )}
               sliderWidth={Dimensions.get('window').width}
@@ -1329,27 +1312,21 @@ class HomeScreen extends React.PureComponent{
               firstItem={1}
               inactiveSlideOpacity={1}
             />
-          )) :  <FastImage source={require('./GemsIcons/loader.png')} style={{alignSelf: 'center', marginTop: 10, width: Dimensions.get('window').width, height: Dimensions.get('window').width}} />
-        :
-        this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-            <ScaledImage
-              source={{uri: uri}} key={uri}
+           
+        : <ScaledImage
+              source={{uri: item.photo}}
               style={{ alignSelf: 'center',
                marginBottom: 0, marginLeft: '2.5%', borderRadius: 10, resizeMode: 'contain' }}
               width={(Dimensions.get('window').width * 100)/95}
-              onPress={() => this.props.navigation.navigate('ViewPost', {id: item.id, dark: this.state.dark })}
+              onPress={() => this.props.navigation.navigate('ViewPost', {doc: ref, dark: this.state.dark })}
              />
-            ))
-          : <FastImage source={require('./GemsIcons/loader.png')} style={{alignSelf: 'center', marginTop: 10, width: Dimensions.get('window').width, height: Dimensions.get('window').width}} />
-
          }
         <View style={{ flexDirection: 'row', backgroundColor: 'transparent', marginVertical: 10, paddingLeft: 10}}>
         <View>
         <TouchableOpacity style={{ borderRadius: 35, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 9,
           backgroundColor: 'white', paddingTop: 16, paddingHorizontal: 14, paddingBottom: 12, marginTop: 4}}
-          onPress={() => this.lovePosts(item.id, item.user)}> 
-             {this.state.loves[index].isliked ? 
+          onPress={() => this.lovePosts(item.id, item.userName)}> 
+             {item.loves.includes(this.state.user) ? 
              <Svg width="27" height="27" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
              <Path d="M31.2601 6.91501C30.4939 6.14851 29.5843 5.54048 28.5831 5.12563C27.5819 4.71079 26.5088 4.49727 25.4251 4.49727C24.3413 4.49727 23.2682 4.71079 22.267 5.12563C21.2658 5.54048 20.3562 6.14851 19.5901 6.91501L18.0001 8.50501L16.4101 6.91501C14.8625 5.36747 12.7636 4.49807 10.5751 4.49807C8.38651 4.49807 6.28759 5.36747 4.74006 6.91501C3.19252 8.46255 2.32312 10.5615 2.32312 12.75C2.32312 14.9386 3.19252 17.0375 4.74006 18.585L6.33006 20.175L18.0001 31.845L29.6701 20.175L31.2601 18.585C32.0265 17.8189 32.6346 16.9092 33.0494 15.908C33.4643 14.9069 33.6778 13.8337 33.6778 12.75C33.6778 11.6663 33.4643 10.5932 33.0494 9.59197C32.6346 8.59079 32.0265 7.68114 31.2601 6.91501Z" fill="#FF007A" stroke="#FF007A" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round"/>
              </Svg>
@@ -1359,18 +1336,15 @@ class HomeScreen extends React.PureComponent{
               </Svg>
               }
         </TouchableOpacity>
-        {this.state.loves[index].loves > 0 ?
-        <Text style={{textAlign: 'center', color: this.state.loves[index].isliked ? 
-        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{this.state.loves[index].loves}</Text> : null}
+        {item.loveCount > 0 ?
+        <Text style={{textAlign: 'center', color: item.loves.includes(this.state.user) ? 
+        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{item.loveCount}</Text> : null}
         </View>
         <View>
-        <TouchableOpacity style={{borderRadius: 5, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 10,
+        <TouchableOpacity style={{borderRadius: 5, elevation: 10, shadowColor: '#f2f2f2', marginHorizontal: 10,
           backgroundColor: 'white', paddingTop: 13, paddingHorizontal: 12, paddingLeft: 14, paddingBottom: 11, marginTop: 4}}
         onPress={() => {
-          this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-            this.props.navigation.navigate('Create', {mixContent: uri, mixId: item.id, dark: this.state.dark, user: this.state.user})
-          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
+          this.props.navigation.navigate('Create', {mixContent: item.photo, mixId: item.id, dark: this.state.dark, user: this.state.user})
         }}>
            <Svg width="30" height="31" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg">
             <G filter="url(#filter0_i)">
@@ -1385,13 +1359,10 @@ class HomeScreen extends React.PureComponent{
         <View>
         <TouchableOpacity style={{ marginLeft: 5, paddingTop: 0, alignItems: 'center', justifyContent: 'center'}}
             onPress={() => {
-                this.state.imageUrls[index] && this.state.imageUrls[index].length
-                ? this.state.imageUrls[index].map((uri) => (
                   Share.share({
                     message:
-                    'Check the Awesome Meme in Meme app ' + uri,
+                    'Check the Awesome Meme in Meme app ' + item.photo,
                   })
-                )) : null
               }}>
           <FIcon name="triangle" size={63} color='white' style={{shadowOpacity: 0.4, textShadowRadius: 5, 
             textShadowOffset:{width: -1, height: 1}, letterSpacing: 10, textShadowColor: 'rgba(0, 0, 0, 0.3)'}} />      
@@ -1404,82 +1375,83 @@ class HomeScreen extends React.PureComponent{
         </View> 
         <TouchableOpacity style={{marginHorizontal: 10, alignItems: 'flex-end', position: 'absolute', right: 23, top: 18,
            alignSelf: 'flex-end'}}
-                onPress={() => this.setState({showAwards: true, currentAwardUser: item.user})}>
+                onPress={() => this.setState({showAwards: true, currentAwardUser: item.userName})}>
              <FIcon name="gift" size={29} color='#ababab' />      
            </TouchableOpacity>
         </View>   
           <TouchableOpacity style={{flexDirection: 'row', justifyContent: 'space-between', width: '95%', alignItems: 'center'}}
           onPress={() =>  {
-            this.setState({showComments: true, currentPostId: item.id, currentPostAuthor: item.user})
-            this.fetchComments(item.id)
+            this.setState({showComments: true, currentPostIdx: index, currentPostAuthor: item.userName})
+            console.log(this.state.currentPostIdx)
           }}>
             <TouchableOpacity style={{marginTop: 20, marginBottom: 25, marginLeft: 25, alignSelf: 'center'}}
                onPress={() => {
-                this.setState({showComments: true, currentPostId: item.id, currentPostAuthor: item.user})
-                this.fetchComments(item.id)
+                this.setState({showComments: true, currentPostIdx: index, currentPostAuthor: item.userName})
                }}>
               <Text style={{color: '#dbdbdb'}}>type a comment</Text></TouchableOpacity>
               <View style={{height: 30, marginHorizontal: 10, marginRight: 16, flexDirection: 'row'}}>
                 <FIcon name='message-circle' size={30} color="#ababab" />
               <Text style={{fontWeight: 'bold', color: this.state.dark ?'white' : '#5c5c5c', marginLeft: 3,
-                position: 'absolute', left: 31 }}>{parseInt(item.comments) > 0 ? item.comments : null}</Text>
+                position: 'absolute', left: 31 }}>
+                  {item.comments.length > 0 ? item.comments.length : null}
+              </Text>
               </View>
           </TouchableOpacity>
           </View>
         </View>
+  )}
+  renderComments = ({item, idx}) => (
+    parseInt(item.replyId) > 0 ? null :
+    <> 
+    <NativeText style={{fontWeight: 'bold', marginLeft : 5,
+     color: '#6D6D6D'}}>{item.user} {this.state.language == 'en' ? <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>
+       {this.timeSince(item.time)}</NativeText> : <PowerTranslator style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}} text={this.timeSince(item.time)} target={this.state.language}  />}</NativeText>
+    
+    <TouchableOpacity onPress={() => {
+      this.setState({replyingTo: item.id, replyingPerson: item.user})
+      this.commentBox.focus()
+    }} >
+    <View style={{flexDirection :'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start',
+     maxWidth: '80%'}}>
+      <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
+      ><Avatar size='medium' style={{marginRight: 5, height: 45, width: 45}}
+           source={{uri: item.userPhoto}} /></TouchableOpacity>
+       {item.photo ? <FastImage source={{uri: item.photo}} style={{
+        width: 100, height: 100}}/> : <View 
+        style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
+              <Text style={{fontWeight: 'bold', marginHorizontal: 10}}>{this.state.language == 'en' ? 
+              <Text style={{elevation: 6, zIndex: 6, fontWeight: 'bold'}}>{item.text}</Text> :
+      <PowerTranslator text={item.text} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black', fontWeight: 'bold'}} target={this.state.language} />}</Text>
+         </View>}
+    </View>
+    </TouchableOpacity>
+   {this.state.data.comments.some(e => e.replyId === item.id)?
+    <View style={{marginLeft: '10%', alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 30, padding: 15, maxWidth: '90%'}}>
+        {this.state.data.comments.map(itm => {
+          if(itm.replyId == item.id){
+            return  <View style={{flexDirection :'row', backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start', 
+            width: '100%', marginVertical: 10}}>
+             <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: itm.user, dark: this.state.dark})}
+             ><Avatar size='medium' style={{marginRight: 5}}
+                  source={{uri: itm.userPhoto}} /></TouchableOpacity>
+
+              {itm.photo ? 
+              <FastImage source={{uri: itm.photo}} style={{
+               width: 100, height: 100}}/> : 
+              <View style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
+              <NativeText style={{marginHorizontal: 10}}>{this.state.language == 'en' ? 
+              <NativeText style={{elevation: 6, zIndex: 6, textAlign: 'left'}}>
+                {itm.text} <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>{this.timeSince(itm.time)}</NativeText>
+              </NativeText> 
+              : <PowerTranslator text={itm.text} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black'}} target={this.state.language} />}</NativeText>
+                </View>}
+
+           </View>
+          }
+        })}
+    </View> : null}
+    </>
   )
-    renderComments = ({item, idx}) => (
-      parseInt(item.replyId) > 0 ? null :
-      <> 
-      <NativeText style={{fontWeight: 'bold', marginLeft : 5,
-       color: '#6D6D6D'}}>{item.user} {this.state.language == 'en' ? <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>
-         {item.time}</NativeText> : <PowerTranslator style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}} text={item.time} target={this.state.language}  />}</NativeText>
-      
-      <TouchableOpacity onPress={() => {
-        this.setState({replyingTo: parseInt(item.id), replyingPerson: item.user})
-        this.commentBox.focus()
-      }} >
-      <View style={{flexDirection :'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start',
-       maxWidth: '80%'}}>
-        <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
-        ><Avatar size='medium' style={{marginRight: 5, height: 45, width: 45}}
-             source={{uri: item.userpic}} /></TouchableOpacity>
-         {item.image ? <FastImage source={{uri: item.image}} style={{
-          width: 100, height: 100}}/> : <View 
-          style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
-                <Text style={{fontWeight: 'bold', marginHorizontal: 10}}>{this.state.language == 'en' ? 
-                <Text style={{elevation: 6, zIndex: 6, fontWeight: 'bold'}}>{item.text}</Text> :
-        <PowerTranslator text={item.text} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black', fontWeight: 'bold'}} target={this.state.language} />}</Text>
-           </View>}
-      </View>
-      </TouchableOpacity>
-     {this.state.comments.some(e => e.replyId === item.id)?
-      <View style={{marginLeft: '10%', alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 30, padding: 15, maxWidth: '90%'}}>
-          {this.state.comments.map(itm => {
-            if(itm.replyId == item.id){
-              return  <View style={{flexDirection :'row', backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start', 
-              width: '100%', marginVertical: 10}}>
-               <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: itm.user, dark: this.state.dark})}
-               ><Avatar size='medium' style={{marginRight: 5}}
-                    source={{uri: itm.userpic}} /></TouchableOpacity>
-
-                {itm.image ? 
-                <FastImage source={{uri: itm.image}} style={{
-                 width: 100, height: 100}}/> : 
-                <View style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
-                <NativeText style={{marginHorizontal: 10}}>{this.state.language == 'en' ? 
-                <NativeText style={{elevation: 6, zIndex: 6, textAlign: 'left'}}>
-                  {itm.text} <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>{itm.time}</NativeText>
-                </NativeText> 
-                : <PowerTranslator text={itm.text} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black'}} target={this.state.language} />}</NativeText>
-                  </View>}
-
-             </View>
-            }
-          })}
-      </View> : null}
-      </>
-    )
     newComment (item) {
       this.setState({newcomment: ''})
       if(this.state.newcomment){
@@ -1791,7 +1763,7 @@ class HomeScreen extends React.PureComponent{
       >
          <Text 
          style={{textAlign: 'center', marginVertical: 10, color: '#ababab'}} category="h6">
-           {Object.keys(this.state.comments).length} <Svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 25 25">
+           {this.state.currentPostIdx > 0 ? this.state.data[this.state.currentPostIdx].comments.length : 0} <Svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 25 25">
           <Path d="M3.12775 18.8879C3.19186 18.6519 3.05016 18.3238 2.91492 18.0873C2.87281 18.0168 2.82714 17.9484 2.77807 17.8825C1.61819 16.1235 0.999979 14.0628 1.00005 11.9558C0.981195 5.90787 5.99628 1 12.1978 1C17.6062 1 22.1207 4.74677 23.1757 9.72037C23.3338 10.4578 23.4136 11.2098 23.4138 11.9639C23.4138 18.0205 18.5922 23.0054 12.3907 23.0054C11.4047 23.0054 10.0739 22.7575 9.34811 22.5544C8.62236 22.3513 7.89768 22.0819 7.71072 22.0097C7.51951 21.9362 7.31643 21.8984 7.11158 21.8982C6.88783 21.8973 6.66623 21.9419 6.46018 22.0291L2.80555 23.3481C2.72548 23.3826 2.64065 23.4047 2.55393 23.4138C2.4855 23.4136 2.4178 23.3998 2.35473 23.3732C2.29167 23.3467 2.2345 23.3079 2.18654 23.2591C2.13858 23.2103 2.10079 23.1524 2.07534 23.0889C2.0499 23.0254 2.03731 22.9574 2.03831 22.889C2.0428 22.8289 2.05364 22.7695 2.07064 22.7117L3.12775 18.8879Z" 
           stroke={this.state.dark ?'white' : '#ababab'} stroke-width="4" stroke-miterlimit="10" stroke-linecap="round"></Path>
           </Svg>
@@ -1803,7 +1775,7 @@ class HomeScreen extends React.PureComponent{
             </G>
           </Svg></TouchableOpacity>
            {this.state.loadingComments ? this.Loading : <FlatList
-            data={this.state.comments}
+            data={this.state.data[this.state.currentPostIdx].comments}
             keyExtractor={(item, idx) => idx}
             renderItem={this.renderComments}
             style={{width: "100%"}}
@@ -1931,7 +1903,7 @@ class HomeScreen extends React.PureComponent{
         <Overlay isVisible={this.state.showMoreOptions} onBackdropPress={() => this.setState({showMoreOptions: !this.state.showMoreOptions})}
          overlayStyle={{width: "80%", minHeight: "30%", borderRadius: 50, backgroundColor: '#fff', paddingHorizontal: 30 }}  animationType="fade">
           <Layout level="4" style={{flex: 1, justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row', backgroundColor: '#fff'}}>
-          {this.state.data[0] ? this.state.user == this.state.data[0].user ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color='#2E3A59' /></TouchableOpacity>
+          {this.state.data[0] ? this.state.user == this.state.data[0].userName ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color='#2E3A59' /></TouchableOpacity>
            : null}
            <TouchableOpacity
              onPress={() => this.addtoBookMarks()}><Icon name="bookmark" size={50} color='#2E3A59' /></TouchableOpacity>
@@ -1943,7 +1915,7 @@ class HomeScreen extends React.PureComponent{
                     )) : null
                 ToastAndroid.show('Copied Meme Link', ToastAndroid.SHORT)
               }}><Icon name="copy" size={50} color='#2E3A59' /></TouchableOpacity>
-          {this.state.user == this.state.data[0].user ? <TouchableOpacity 
+          {this.state.user == this.state.data[0].userName ? <TouchableOpacity 
               onPress={() => {  this.deleteMeme()
               }}><Icon name="ios-trash-bin" size={50} color='#2E3A59' /></TouchableOpacity>    : null}
           </Layout>
@@ -2000,28 +1972,17 @@ class ViewPost extends React.Component{
       showComments: false,
       x: new Animated.Value(0)
     }
-    this.socket = io.connect('https://lishup.com:3000', {secure: true}, { transports: ['websocket'] })
-    this.socket.on('connect', function (data) {
-    console.log('connected to socket on post')
-    })
   }
   componentDidMount(){
     const { params } = this.props.navigation.state
-    const id = params ? params.id : null
+    const doc = params ? params.doc : null
     const dark = params ? params.dark : null
 
     this.setState({dark: dark})
     this.props.navigation.setParams({darktheme: dark})
 
-    this.fetchUser(id)
-    this.fetchComments(id)
+    this.fetchUser(doc)
     
-    this.socket.on('newComment', data => {
-      if(id == data.id){
-        let newcomment = {id: data.id, user: data.user, text: data.text, time: data.time, image: data.url}
-        this.setState({ comments: [newcomment, ...this.state.comments]  });
-      }
-  })
   BackHandler.addEventListener('hardwareBackPress', () => {
     this.props.navigation.goBack()
     return true
@@ -2033,13 +1994,13 @@ class ViewPost extends React.Component{
       return true
     })
   }
-  fetchUser = async(id) => {
+  fetchUser = async(doc) => {
     try {
       var user = await AsyncStorage.getItem('user')
       var lan = await AsyncStorage.getItem('language')
       if(user !== null) {
         this.setState({user: user, language: lan ? lan : 'en'})
-        this.fetch(id)
+        this.fetch(doc)
       }
     } catch(e) {
       ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
@@ -2082,33 +2043,17 @@ class ViewPost extends React.Component{
       console.log(e)
     }
   }
-  fetch(id){
-    fetch('https://lishup.com/app/getpost.php', {
-         method: 'POST',
-         headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user: this.state.user,
-          id: id
-        })
+  fetch(doc){
+    firestore()
+      .collection('Posts')
+      .doc(doc)
+      .get()
+      .then(snapshot => {
+        this.setState({
+          data: snapshot._data,
+          loading: false
+       })
       })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        console.log(responseJson)
-         this.setState({
-            data: responseJson,
-            loading: false
-         })
-         console.log(responseJson[0])
-         Promise.all(
-          responseJson.map(({ images }) => this.fetchImage(images))
-        ).then((imageUrls) => { this.setState({ imageUrls })  } );
-      })
-      .catch((error) => {
-         console.error(error);
-      });
   }
   nextPost(type){
     if(type == 'next'){
@@ -2161,37 +2106,7 @@ class ViewPost extends React.Component{
          console.error(error);
       });
   }
-  fetchImage(image) {
-    return fetch('https://lishup.com/app/fetch-image.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ image }),
-    })
-      .then((response) => response.json())
-      .then((responseJson) =>
-        responseJson.filter(({ url }) => url).map(({ url }) => url)
-      );
-  }
-  fetchComments(id) {
-    return fetch('https://lishup.com/app/getcomments.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ lid: id }),
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        if(responseJson){
-          this.setState({comments: responseJson })
-          console.log(this.state.comments)
-        }
-      })
-  }
+
   formatMention(string){
     return string.split(/((?:^|\s)(?:@[a-z\d-]+))/gi).filter(Boolean).map((v,i)=>{
       if(v.includes('@')){
@@ -2284,7 +2199,27 @@ class ViewPost extends React.Component{
       }
     })
   }
-  renderPost = ({item, index}) => (
+  timeSince(timeStamp) {
+    var now = new Date(),
+      secondsPast = (now.getTime() - timeStamp) / 1000;
+    if (secondsPast < 60) {
+      return parseInt(secondsPast) + 's';
+    }
+    if (secondsPast < 3600) {
+      return parseInt(secondsPast / 60) + 'm';
+    }
+    if (secondsPast <= 86400) {
+      return parseInt(secondsPast / 3600) + 'h';
+    }
+    if (secondsPast > 86400) {
+      day = timeStamp.getDate();
+      month = timeStamp.toDateString().match(/ [a-zA-Z]*/)[0].replace(" ", "");
+      year = timeStamp.getFullYear() == now.getFullYear() ? "" : " " + timeStamp.getFullYear();
+      return day + " " + month + year;
+    }
+  }
+  renderPost = ({item, index}) => {
+    return (
     <Animated.View style={{flex: 1, width: "100%", margin: 0, padding: 0, backgroundColor: 'transparent', height: '100%',
     transform: [
       {
@@ -2293,7 +2228,7 @@ class ViewPost extends React.Component{
     ]}} key={index}>
         <View style={{width: '100%', marginTop: '5%', alignSelf: 'center', alignContent: 'center', }}>
         <View style={{flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'center'}}>
-          {item.reUser ?
+          {item.remixUser ?
             <><View style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor:  '#fff', 
             opacity: this.state.activeStory == 'main' ? 1 : 0.5}} />
             <View style={{height: 2.5, width: Dimensions.get('window').width/3, backgroundColor:'#fff', 
@@ -2306,16 +2241,16 @@ class ViewPost extends React.Component{
         <View>
         <ListItem
             title={props => <Text style={{ fontSize:15, left: 10, elevation: 5, zIndex: 5, color: this.state.dark ? "white" : '#A7A7A7', fontWeight: 'bold'}}>
-            {item.user}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
-              {item.time}</Text> : <PowerTranslator text={item.time} 
+            {item.userName}  {this.state.language == 'en' ? <Text style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}}>
+              {this.timeSince(item.time)}</Text> : <PowerTranslator text={this.timeSince(item.time)} 
             style={{fontSize: 12, elevation: 5, zIndex: 5, color: this.state.dark ? "#f2f2f2" : '#ababab'}} target={this.state.language}/>}
             </Text>}
             accessoryLeft={evaProps => 
-              <Avatar source={{uri: item.userpic}} style={{width: 38, height: 38, borderRadius: 38/2, marginTop: 2}} />}
-            onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark })}
+              <Avatar source={{uri: item.userPhoto}} style={{width: 38, height: 38, borderRadius: 38/2, marginTop: 2}} />}
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.userName, dark: this.state.dark })}
             style={{backgroundColor: 'transparent', elevation: 5, zIndex: 5, }}
             description={props => 
-            <NativeText style={{left: 8, elevation: 4, zIndex: 4}}>{item.reUser ? 
+            <NativeText style={{left: 8, elevation: 4, zIndex: 4}}>{item.remixUser ? 
               <View style={{flexDirection: 'row'}}>
               <Svg width="20" height="18" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginTop: 5}}>
               <G filter="url(#filter0_i)">
@@ -2324,59 +2259,49 @@ class ViewPost extends React.Component{
               </G>
             </Svg>
             <NativeText 
-            onPress={() => this.props.navigation.navigate('Profile', {user: item.reUser, dark: this.state.dark})} 
-            style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.reUser} </NativeText>
-            </View> : null} {item.text ? this.formatText(item.text) : '...'}</NativeText>}
+            onPress={() => this.props.navigation.navigate('Profile', {user: item.remixUser, dark: this.state.dark})} 
+            style={{backgroundColor: '#C4C4C4', padding: 2}}> {item.remixUser} </NativeText>
+            </View> : null} {item.caption ? this.formatText(item.caption) : '...'}</NativeText>}
             accessoryRight={evaProps => <EnIcon name="dots-three-horizontal" color="#ABABAB" size={25} style={{marginBottom: 30,
                marginRight: 20}}
             onPress={() => this.setState({moreOptions: true}) }/>}
           />
         </View>
         <View style={{ borderRadius: 5, padding: 0, marginTop: 0}}>
-        {item.remixUri ?
-        this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-              <ScaledImage
-          source={{uri: this.state.activeStory == 'main' ? uri : item.remixUri }}
+        {item.remixUri ?<ScaledImage
+          source={{uri: this.state.activeStory == 'main' ? item.photo : item.remixUri }}
           width={Dimensions.get('window').width}
       />
-        )) : null 
         :
-        this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
             <ScaledImage
-              source={{uri: uri}}
+              source={{uri: item.photo}}
               style={{width: '95%', height: (Dimensions.get('window').height * 50) / 100, alignSelf: 'center',
                marginBottom: 0, marginLeft: '2.5%', borderRadius: 10  }}
               
               width={Dimensions.get('window').width}
              />
-            ))
-          : <FastImage source={require('./GemsIcons/loader.png')} style={{alignSelf: 'center', marginTop: 10, width: Dimensions.get('window').width, 
-              height: Dimensions.get('window').width}} />
-
          }  
         </View>
        </View>
       </Animated.View>
-  )
+  )}
   renderComments = ({item, idx}) => (
     parseInt(item.replyId) > 0 ? null :
     <> 
     <NativeText style={{fontWeight: 'bold', marginLeft : 5,
      color: '#6D6D6D'}}>{item.user} {this.state.language == 'en' ? <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>
-       {item.time}</NativeText> : <PowerTranslator style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}} text={item.time} target={this.state.language}  />}</NativeText>
+       {this.timeSince(item.time)}</NativeText> : <PowerTranslator style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}} text={this.timeSince(item.time)} target={this.state.language}  />}</NativeText>
     
     <TouchableOpacity onPress={() => {
-      this.setState({replyingTo: parseInt(item.id), replyingPerson: item.user})
+      this.setState({replyingTo: item.id, replyingPerson: item.user})
       this.commentBox.focus()
     }} >
     <View style={{flexDirection :'row', marginVertical: 10, backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start',
      maxWidth: '80%'}}>
       <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: item.user, dark: this.state.dark})}
       ><Avatar size='medium' style={{marginRight: 5, height: 45, width: 45}}
-           source={{uri: item.userpic}} /></TouchableOpacity>
-       {item.image ? <FastImage source={{uri: item.image}} style={{
+           source={{uri: item.userPhoto}} /></TouchableOpacity>
+       {item.photo ? <FastImage source={{uri: item.photo}} style={{
         width: 100, height: 100}}/> : <View 
         style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
               <Text style={{fontWeight: 'bold', marginHorizontal: 10}}>{this.state.language == 'en' ? 
@@ -2385,23 +2310,23 @@ class ViewPost extends React.Component{
          </View>}
     </View>
     </TouchableOpacity>
-   {this.state.comments.some(e => e.replyId === item.id)?
+   {this.state.data.comments.some(e => e.replyId === item.id)?
     <View style={{marginLeft: '10%', alignSelf: 'flex-start', backgroundColor: '#fff', borderRadius: 30, padding: 15, maxWidth: '90%'}}>
-        {this.state.comments.map(itm => {
+        {this.state.data.comments.map(itm => {
           if(itm.replyId == item.id){
             return  <View style={{flexDirection :'row', backgroundColor: '#fff', borderRadius: 30, alignSelf: 'flex-start', 
             width: '100%', marginVertical: 10}}>
              <TouchableOpacity onPress={() => this.props.navigation.navigate('Profile', {user: itm.user, dark: this.state.dark})}
              ><Avatar size='medium' style={{marginRight: 5}}
-                  source={{uri: itm.userpic}} /></TouchableOpacity>
+                  source={{uri: itm.userPhoto}} /></TouchableOpacity>
 
-              {itm.image ? 
-              <FastImage source={{uri: itm.image}} style={{
+              {itm.photo ? 
+              <FastImage source={{uri: itm.photo}} style={{
                width: 100, height: 100}}/> : 
               <View style={{backgroundColor: this.state.dark ? '#151a30' : '#fff', padding: 10, borderRadius: 20,}}>
               <NativeText style={{marginHorizontal: 10}}>{this.state.language == 'en' ? 
               <NativeText style={{elevation: 6, zIndex: 6, textAlign: 'left'}}>
-                {itm.text} <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>{itm.time}</NativeText>
+                {itm.text} <NativeText style={{color: '#BABABA', fontSize: 12, fontWeight: 'normal'}}>{this.timeSince(itm.time)}</NativeText>
               </NativeText> 
               : <PowerTranslator text={itm.text} style={{elevation: 6, zIndex: 6, color: this.state.dark ? 'white' : 'black'}} target={this.state.language} />}</NativeText>
                 </View>}
@@ -2480,43 +2405,43 @@ class ViewPost extends React.Component{
     })
         
     }
-  slide = async(type) => {
-    if(type == 'next'){
-      if(this.state.data[0].reUser && this.state.activeStory == 'main'){
-        this.setState({activeStory: 'remix'})
+    slide = async(type) => {
+      if(type == 'next'){
+        if(this.state.data.remixUser && this.state.activeStory == 'main'){
+          this.setState({activeStory: 'remix'})
+        }else{
+          this.nextPost('next')
+        }
+          Animated.timing(this.state.x, {
+            toValue: -(Dimensions.get('window').width),
+            useNativeDriver: false,
+            duration: 500,
+            easing: Easing.linear()
+          }).start(() => {
+              this.state.x.setValue(300)
+              Animated.spring(this.state.x, {
+                toValue: 0,
+                useNativeDriver: false
+              }).start()
+          })
       }else{
-        this.nextPost('next')
-      }
+        if(this.state.data.remixUser && this.state.activeStory == 'remix'){
+          this.setState({activeStory: 'main'})
+        }else{
+          this.nextPost('previous')
+        }
         Animated.timing(this.state.x, {
-          toValue: -(Dimensions.get('window').width),
-          useNativeDriver: false,
-          duration: 500,
-          easing: Easing.linear()
+          toValue: Dimensions.get('window').width,
+          useNativeDriver: false
         }).start(() => {
-            this.state.x.setValue(300)
+            this.state.x.setValue(-200)
             Animated.spring(this.state.x, {
               toValue: 0,
               useNativeDriver: false
             }).start()
         })
-    }else{
-      if(this.state.data[0].reUser && this.state.activeStory == 'remix'){
-        this.setState({activeStory: 'main'})
-      }else{
-        this.nextPost('previous')
       }
-      Animated.timing(this.state.x, {
-        toValue: Dimensions.get('window').width,
-        useNativeDriver: false
-      }).start(() => {
-          this.state.x.setValue(-200)
-          Animated.spring(this.state.x, {
-            toValue: 0,
-            useNativeDriver: false
-          }).start()
-      })
-    }
-  }  
+    }  
   render(){
     const { params } = this.props.navigation.state
     const id = params ? params.id : null 
@@ -2536,20 +2461,19 @@ class ViewPost extends React.Component{
       </ApplicationProvider>
       )
     }else{
-      var uri = this.state.imageUrls[0]
     return(
       <ApplicationProvider {...eva}
     theme={eva.dark}>
         <Layout style={{flex: 1, backgroundColor: 'black'}}>
           <ScrollView style={{  flex: 1, paddingTop: 30 }}>
-           <TouchableWithoutFeedback onPress={() => this.state.data[0].reUser ? this.state.activeStory == 'remix' ? this.slide('next') : this.setState({activeStory: 'remix'}) : this.slide('next')}>
+          <TouchableWithoutFeedback onPress={() => this.state.data.remixUser ? this.state.activeStory == 'remix' ? this.slide('next') : this.setState({activeStory: 'remix'}) : this.slide('next')}>
              <View  style={{height: Dimensions.get('window').height/1.6, width: 100, position: 'absolute', zIndex: 100, right: 0, top: 100
             }} /></TouchableWithoutFeedback> 
-          <TouchableWithoutFeedback onPress={() => this.state.data[0].reUser ? this.state.activeStory == 'main' ? this.slide('previous') : this.setState({activeStory: 'main'}) : this.slide('previous')}>
+          <TouchableWithoutFeedback onPress={() => this.state.data.remixUser ? this.state.activeStory == 'main' ? this.slide('previous') : this.setState({activeStory: 'main'}) : this.slide('previous')}>
              <View  style={{height: Dimensions.get('window').height/1.6, width: 100, position: 'absolute', zIndex: 100, left: 0, top: 100
-            }} /></TouchableWithoutFeedback>    
+            }} /></TouchableWithoutFeedback> 
         <FlatList
-            data={this.state.data}
+            data={[this.state.data]}
             keyExtractor={(item, idx) => idx}
             renderItem={this.renderPost}
           />
@@ -2595,7 +2519,7 @@ class ViewPost extends React.Component{
         <Overlay isVisible={this.state.moreOptions} onBackdropPress={() => this.setState({moreOptions: !this.state.moreOptions})}
          overlayStyle={{width: "80%", minHeight: "30%", borderRadius: 50, backgroundColor: this.state.dark ? '#101426' : '#fff', paddingHorizontal: 30 }}  animationType="fade">
           <Layout level="4" style={{flex: 1, justifyContent: 'space-between', alignItems: 'center', flexDirection: 'row', backgroundColor: this.state.dark ? '#101426' : '#fff'}}>
-          {this.state.user == this.state.data[0].user ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>}
+          {this.state.user == this.state.data.userName ? null : <TouchableOpacity onPress={() => this.setState({reportPost: true})}><Icon name="alert-circle" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>}
            <TouchableOpacity
              onPress={() => this.addtoBookMarks()}><Icon name="bookmark" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
            <TouchableOpacity 
@@ -2606,7 +2530,7 @@ class ViewPost extends React.Component{
                     )) : null
                 ToastAndroid.show('Copied Meme Link', ToastAndroid.SHORT)
               }}><Icon name="copy" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>
-          {this.state.user == this.state.data[0].user ? <TouchableOpacity 
+          {this.state.user == this.state.data.userName ? <TouchableOpacity 
               onPress={() => {  this.deleteMeme()
               }}><Icon name="ios-trash-bin" size={50} color={this.state.dark ? '#fff' : '#2E3A59'} /></TouchableOpacity>    : null}
           </Layout>
@@ -2621,7 +2545,6 @@ class ViewPost extends React.Component{
            onPress={() => this.reportPost()}>Report</Button>
           </Layout>
           </Overlay>
-
           </ScrollView>
           <Overlay
         animationType="slide"
@@ -2649,7 +2572,7 @@ class ViewPost extends React.Component{
             </G>
           </Svg></TouchableOpacity>
            {this.state.loadingComments ? this.Loading : <FlatList
-            data={this.state.comments}
+            data={this.state.data.comments}
             keyExtractor={(item, idx) => idx}
             renderItem={this.renderComments}
             style={{width: "100%"}}
@@ -2718,7 +2641,7 @@ class ViewPost extends React.Component{
             width:"100%", height: "100%", top: 0, position: 'absolute', alignSelf: 'center'
           }} /> : null}
 
-         <Animated.View style={{position: 'absolute', bottom: 0, zIndex: 20, width: Dimensions.get('window').width, 
+ <Animated.View style={{position: 'absolute', bottom: 0, zIndex: 20, width: Dimensions.get('window').width, 
         transform: [
           {
             translateX: this.state.x
@@ -2726,10 +2649,10 @@ class ViewPost extends React.Component{
         ]}}>
          <View style={{ flexDirection: 'row', backgroundColor: 'transparent', marginVertical: 10, paddingLeft: 10}}>
         <View>
-        <TouchableOpacity style={{ borderRadius: 35, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 9,
+        <TouchableOpacity style={{ borderRadius: 35, marginHorizontal: 9,
           backgroundColor: 'transparent', paddingTop: 16, paddingHorizontal: 14, paddingBottom: 12, marginTop: 4}}
-          onPress={() => this.lovePosts(this.state.data[0].id, this.state.data[0].user)}> 
-             {this.state.data[0].isliked ? 
+          onPress={() => this.lovePosts(this.state.data.id, this.state.data.user)}> 
+             {this.state.data.isLoved ? 
              <Svg width="27" height="27" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
              <Path d="M31.2601 6.91501C30.4939 6.14851 29.5843 5.54048 28.5831 5.12563C27.5819 4.71079 26.5088 4.49727 25.4251 4.49727C24.3413 4.49727 23.2682 4.71079 22.267 5.12563C21.2658 5.54048 20.3562 6.14851 19.5901 6.91501L18.0001 8.50501L16.4101 6.91501C14.8625 5.36747 12.7636 4.49807 10.5751 4.49807C8.38651 4.49807 6.28759 5.36747 4.74006 6.91501C3.19252 8.46255 2.32312 10.5615 2.32312 12.75C2.32312 14.9386 3.19252 17.0375 4.74006 18.585L6.33006 20.175L18.0001 31.845L29.6701 20.175L31.2601 18.585C32.0265 17.8189 32.6346 16.9092 33.0494 15.908C33.4643 14.9069 33.6778 13.8337 33.6778 12.75C33.6778 11.6663 33.4643 10.5932 33.0494 9.59197C32.6346 8.59079 32.0265 7.68114 31.2601 6.91501Z" fill="#FF007A" stroke="#FF007A" stroke-width="3.75" stroke-linecap="round" stroke-linejoin="round"/>
              </Svg>
@@ -2739,18 +2662,15 @@ class ViewPost extends React.Component{
               </Svg>
               }
         </TouchableOpacity>
-        {this.state.data[0].loves > 0 ?
-        <Text style={{textAlign: 'center', color: this.state.data[0].isliked ? 
-        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{this.state.data[0].loves}</Text> : null}
+        {this.state.data.loveCount > 0 ?
+        <Text style={{textAlign: 'center', color: this.state.data.isLoved ? 
+        '#FF007A' : this.state.dark ? "white" : '#ABABAB', }}>{this.state.data.loveCount}</Text> : null}
         </View>
         <View>
-        <TouchableOpacity style={{borderRadius: 5, elevation: 3, shadowColor: '#f2f2f2', marginHorizontal: 10,
+        <TouchableOpacity style={{borderRadius: 5, marginHorizontal: 10,
         backgroundColor: 'transparent', paddingTop: 13, paddingHorizontal: 12, paddingLeft: 14, paddingBottom: 11, marginTop: 4}}
         onPress={() => {
-          this.state.imageUrls[0] && this.state.imageUrls[0].length
-          ? this.state.imageUrls[0].map((uri) => (
-            this.props.navigation.navigate('Create', {mixContent: uri, mixId: this.state.data[0].id, dark: this.state.dark, user: this.state.user})
-          )) : ToastAndroid.show('Please Try Again', ToastAndroid.SHORT)
+            this.props.navigation.navigate('Create', {mixContent: this.state.data.photo, mixId: this.state.data.id, dark: this.state.dark, user: this.state.user})
         }}>
            <Svg width="30" height="31" viewBox="0 0 36 31" fill="none" xmlns="http://www.w3.org/2000/svg">
             <G filter="url(#filter0_i)">
@@ -2759,19 +2679,16 @@ class ViewPost extends React.Component{
             </G>
           </Svg>
         </TouchableOpacity>
-        {parseInt(this.state.data[0].remixCount) > 0 ?
-        <Text style={{textAlign: 'center', color: '#00E0FF' }}>{this.state.data[0].remixCount}</Text> : null}
+        {parseInt(this.state.data.remixCount) > 0 ?
+        <Text style={{textAlign: 'center', color: '#00E0FF' }}>{this.state.data.remixCount}</Text> : null}
         </View>
         <View>
         <TouchableOpacity style={{ marginLeft: 5, paddingTop: 0, alignItems: 'center', justifyContent: 'center'}}
             onPress={() => {
-                this.state.imageUrls[0] && this.state.imageUrls[0].length
-                ? this.state.imageUrls[0].map((uri) => (
                   Share.share({
                     message:
-                    'Check the Awesome Meme in Meme app ' + uri,
+                    'Check the Awesome Meme in Meme app ' + this.state.data.photo,
                   })
-                )) : null
               }}>
           <FIcon name="triangle" size={63} color='black' style={{shadowOpacity: 1}} />      
            <Icon name="triangle" size={63} color='transparent' style={{position: 'absolute', alignSelf: 'center'}} />          
@@ -2783,28 +2700,27 @@ class ViewPost extends React.Component{
         </View> 
         <TouchableOpacity style={{marginHorizontal: 10, alignItems: 'flex-end', position: 'absolute', right: 23, top: 18,
            alignSelf: 'flex-end'}}
-                onPress={() => this.setState({showAwards: true, currentAwardUser: this.state.data[0].user})}>
+                onPress={() => this.setState({showAwards: true, currentAwardUser: this.state.data.userName})}>
              <FIcon name="gift" size={29} color='#ababab' />      
            </TouchableOpacity>
         </View>   
-          <Input placeholder="type a comment" style={{
-           backgroundColor: '#484848', marginTop: 25, borderWidth: 0, borderColor: '#484848', width: '100%', marginBottom: 0,
-            alignSelf: 'center', marginHorizontal: 10, 
-          }} textStyle={{color: this.state.dark ?'white' : '#dbdbdb'}} placeholderTextColor={this.state.dark ?'white' : '#dbdbdb'} size="large"
-           accessoryRight={props =>  <TouchableOpacity style={{height: 30, marginHorizontal: 10, marginRight: 16, flexDirection: 'row'}}
+        <TouchableOpacity style={{flexDirection: 'row', justifyContent: 'space-between', width: '95%', alignItems: 'center'}}
           onPress={() =>  {
-            this.setState({showComments: true, currentPostId: this.state.data[0].id, currentPostAuthor: this.state.data[0].user})
-            this.fetchComments(this.state.data[0].id)
+            this.setState({showComments: true})
           }}>
-            <FIcon name='message-circle' size={30} color="#ababab" />
-           <Text style={{fontWeight: 'bold', color: this.state.dark ?'white' : '#5c5c5c', marginLeft: 3,
-             position: 'absolute', left: 31 }}>{parseInt(this.state.data[0].comments) > 0 ? this.state.data[0].comments : null}</Text>
-          </TouchableOpacity>}
-          onFocus={() => {
-            this.setState({showComments: true, currentPostId: this.state.data[0].id, currentPostAuthor: this.state.data[0].user})
-            this.fetchComments(this.state.data[0].id)
-          }} 
-          multiline={true}/></Animated.View>
+            <TouchableOpacity style={{marginTop: 20, marginBottom: 25, marginLeft: 25, alignSelf: 'center'}}
+               onPress={() => {
+                this.setState({showComments: true})
+               }}>
+              <Text style={{color: '#dbdbdb'}}>type a comment</Text></TouchableOpacity>
+              <View style={{height: 30, marginHorizontal: 10, marginRight: 16, flexDirection: 'row'}}>
+                <FIcon name='message-circle' size={30} color="#ababab" />
+              <Text style={{fontWeight: 'bold', color: this.state.dark ?'white' : '#5c5c5c', marginLeft: 3,
+                position: 'absolute', left: 31 }}>
+                  {this.state.data.comments.length > 0 ? this.state.data.comments.length : null}
+              </Text>
+              </View>
+          </TouchableOpacity></Animated.View>
         </Layout>
       </ApplicationProvider>
     )
@@ -3194,190 +3110,7 @@ return (
     }
   }
 }
-class ContestDetails extends React.Component{
-  static navigationOptions = ({navigation}) => {
-    const { params = {} } = navigation.state
-    return {
-      title: params.hashtag,
-      headerTitleStyle: {color: 'white'},
-      headerStyle: { elevation:0, backgroundColor: params.darktheme ? '#151a30' : '#7200CB' },
-      headerTintColor: 'white'
-    };
-  };
-  state = {
-    dark: false,
-    data: [],
-    imageUrls: [],
-    posts: [],
-    hashtag: '',
-    language: 'en'
-  }
-  componentDidMount(){
-    const { params } = this.props.navigation.state
-    const dark = params ? params.dark : null
-    this.setState({dark: dark})
 
-    this.fetchUser()
-    StatusBar.setBackgroundColor("rgba(0,0,0,0)")
-    StatusBar.setBarStyle("light-content")
-    StatusBar.setTranslucent(true)
-  }
-  fetchUser = async() => {
-    try {
-      var user = await AsyncStorage.getItem('user')
-      var lan = await AsyncStorage.getItem('language')
-      if(user !== null) {
-        this.setState({user: user, language: lan ? lan : 'en'})
-        this.fetch(user)
-      }
-    } catch(e) {
-      ToastAndroid.show('Could Not Get User', ToastAndroid.SHORT)
-    }
-  }
-  fetch(user){
-    const { params } = this.props.navigation.state
-    const id = params ? params.id : null
-
-    fetch('https://lishup.com/app/fetchContests.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: id,
-        user: user
-      }),
-    })
-    .then((response) => response.json())
-    .then((responseJson) => {
-      console.log(responseJson[0])
-        this.setState({data: responseJson[0], hashtag: responseJson[0].title.replace(/\s/g, ''), posts: responseJson[0].posts })
-        this.props.navigation.setParams({hashtag: '#' + this.state.hashtag})
-
-        Promise.all(
-          responseJson[0].posts.map(({ image }) => this.fetchImage(image) )
-        ).then((imageUrls) => {this.setState({ imageUrls })
-         })
-    })
-  }
-  fetchImage(image) {
-    console.log(image)
-    return fetch('https://lishup.com/app/fetch-image.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ image }),
-    })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        return responseJson.filter(({ url }) => url).map(({ url }) => url)
-      })
-  }
-  lovePosts(id, author){
-    this.setState((state) => {
-      const posts = state.posts.map((el) => {
-        if (el.id === id) {
-          if (el.isliked == true) {
-            el.isliked = !el.isliked
-          } else {
-            el.isliked = !el.isliked
-          }
-        }
-        return el
-      });
-      const isPress = !state.isPress
-      return { posts, isPress }
-    });
-    console.log(this.state.data)
-
-    fetch('https://lishup.com/app/love.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        id: id,
-        user: this.state.user,
-        author: author,
-      }),
-    })
-
-  }
-  renderPosts = ({item, index}) => (
-     <TouchableOpacity onPress={() => this.props.navigation.navigate('ViewPost', {id: item.id, dark: this.state.dark})} style={{margin: 10}}
-      onLongPress={() => this.lovePosts(item.id, item.user)}>
-      <Layout style={{ alignSelf: 'center',
-    width: "100%",
-    height: Dimensions.get('window').height / 2,
-    margin: 10,
-    borderRadius: 8,
-    elevation: 5, backgroundColor: item.isliked ? '#E3296D' : 'white'}}>
-        <View style={styles.imageContainer}>
-        {this.state.imageUrls[index] && this.state.imageUrls[index].length
-          ? this.state.imageUrls[index].map((uri) => (
-         <FastImage
-                    source={{ uri: uri }}
-                    style={styles.image}
-                    resizeMode="cover"
-         /> )) : null }
-         </View>
-       <Text style={{textAlign: 'center', marginVertical: 10, color: item.isliked ? 'white' : 'black' }} category="s1" numberOfLines={2}>
-       {this.state.language == 'en' ? item.text : <PowerTranslator text={item.text} target={this.state.language} />}
-      </Text>
-    </Layout>
-    </TouchableOpacity>
-  )
-
-  render(){
-    return(
-      <ApplicationProvider {...eva} theme={eva.light} >
-        <Layout style={{flex: 1, }}>
-          <ScrollView>
-        <LinearGradient colors={['#7200CB', '#5100CB']} style={{ width: Dimensions.get('window').width, height: 100 }}>
-            <Svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox={"0 0 1440 320"}
-              style={{ position: 'absolute', top: 100, marginBottom: 30 }}
-              preserveAspectRatio="none"
-            >
-               <Path fill="#5000ca" fill-opacity="1" d="M0,224L48,186.7C96,149,192,75,288,85.3C384,96,480,192,576,208C672,224,768,160,864,133.3C960,107,1056,117,1152,122.7C1248,128,1344,128,1392,128L1440,128L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z" />
-            </Svg>
-            <Text category="h2" style={{textAlign: 'center', marginVertical: 10, color: 'white'}}>
-               {this.state.data.title}</Text>
-            <Text category="s1" style={{textAlign: 'center', marginHorizontal: 30, marginBottom: 20, color: 'white'}}>
-            {this.state.language == 'en' ? 'Tag Posts with' : <PowerTranslator text='Tag Posts with' target={this.state.language} />} <Text style={{fontWeight: 'bold', color:'white'}}>#{this.state.hashtag ? this.state.hashtag : null}</Text> {this.state.language == 'en' ? 'to Join and Win' : <PowerTranslator text='to Join and Win' target={this.state.language} />}  {this.state.data.prize} gems
-            </Text>
-            <Button style={{padding: 10, width: 200, alignSelf: 'center', borderRadius: 30, backgroundColor: '#c728b2', borderColor: 'transparent'}}
-             onPress={() => this.props.navigation.navigate('Create', {text: '#' + this.state.hashtag, dark: this.state.dark})}>
-              Join Now</Button>     
-          </LinearGradient>
-          <View style={{marginTop: "28%", flex: 1}}>
-            <Text category="h6" style={{margin: 10, textAlign: 'center'}}>{this.state.language == 'en' ? 'Top Posts by Love' : <PowerTranslator text='Top Posts by Love' target={this.state.language} />}</Text>
-            <Text appearance="hint" style={{margin: 5, textAlign: 'center'}}>{this.state.language == 'en' ? 'Long Press to Love' : <PowerTranslator text='Long Press to Love' target={this.state.language} />}</Text>
-            <Carousel
-              ref={(c) => { this._postcarousel = c; }}
-              data={this.state.posts}
-              renderItem={this.renderPosts}
-              sliderWidth={Dimensions.get('window').width}
-              sliderHeight={Dimensions.get('window').height}
-              itemWidth={Dimensions.get('window').width - 20}
-              itemHeight={Dimensions.get('window').height}
-              extraData={this.state}
-              autoplay={true}
-              autoplayInterval={5000}
-              style={{marginBottom: 20}}
-            />
-            </View>
-          </ScrollView>
-        </Layout>
-      </ApplicationProvider>
-    )
-  }
-}
 class Settings extends React.Component{
   state = {
     dark: false,
@@ -3718,14 +3451,8 @@ class Settings extends React.Component{
           title={props => <Text {...props}>{lan == 'en' ? 'Rate App' : <PowerTranslator text='Rate App' target={this.state.lanInW} />}</Text>}
           accessoryRight={props => <Icon name="star-outline" size={30} color={this.state.dark ? '#fff' : '#000'}/>} 
           onPress={() => {
-            const inapp = InAppReview.isAvailable()
-            if(inapp){
-              InAppReview.RequestInAppReview()
               Linking.openURL("market://details?id=com.meme.lishup")
-            }else {
-              Linking.openURL("market://details?id=com.meme.lishup")
-            }
-          } } />  
+          }} />  
         <ListItem title={props => <Text category="h6" style={{marginLeft: 10}}>{lan == 'en' ? 'Privacy' : <PowerTranslator text='Privacy' target={this.state.lanInW} />}</Text>} />
         <ListItem 
           title={props => <Text {...props}>{lan == 'en' ? 'Terms & Conditions' : <PowerTranslator text='Terms & Conditions' target={this.state.lanInW} />}</Text>}
@@ -3955,9 +3682,9 @@ const TabNavigator = createMaterialTopTabNavigator({
       backgroundColor: 'white',
       elevation: 0
     },
-    tabStyle: {flexDirection: 'column', paddingTop: 25, paddingBottom: 20, elevation: 0},
+    tabStyle: {flexDirection: 'column', paddingTop: 25, paddingBottom: 10, elevation: 0},
     showIcon: true,
-    iconStyle: {width: 35},
+    iconStyle: {width: 35, height: 40},
     indicatorStyle: {backgroundColor: 'transparent'}
   },
 })
@@ -3978,9 +3705,6 @@ const App = createStackNavigator({
   },
   Profile: {
     screen: Profile,
-  },
-  ContestDetails: {
-    screen: ContestDetails
   },
   Authentication: {
     screen: Authentication

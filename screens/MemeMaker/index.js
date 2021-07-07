@@ -1,23 +1,19 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import {
-  SafeAreaView,
-  StyleSheet,
   ScrollView, 
   ToastAndroid,
   View,
-  StatusBar,
-  TouchableOpacity, TouchableWithoutFeedback,
-  ActivityIndicator,
+  TouchableOpacity,
   Dimensions,
   Modal,
   FlatList,
-  Alert,
-  Clipboard,
-  Easing, Linking, RefreshControl, Share, BackHandler, Vibration, Text as NativeText,
-  ImageBackground, Image as NativeImage, Slider, CheckBox, PermissionsAndroid, TextInput, Picker, Switch, Animated
+  Alert, RefreshControl, Share, BackHandler, Text as NativeText, 
+  Image as NativeImage, Slider, PermissionsAndroid, TextInput,
 } from 'react-native'
+import CheckBox from '@react-native-community/checkbox'
+import firestore from '@react-native-firebase/firestore'
 import 'react-native-gesture-handler'
-import {Card, Divider, Overlay,} from 'react-native-elements'  
+import {Overlay,} from 'react-native-elements'  
 import Icon from 'react-native-vector-icons/Ionicons'
 import Carousel from 'react-native-snap-carousel'
 import Svg, {
@@ -25,7 +21,8 @@ import Svg, {
 } from 'react-native-svg'
 
 import FastImage from 'react-native-fast-image'
-import {Image, Badge, ListItem as HeaderItem} from 'react-native-elements'
+import {Image} from 'react-native-elements'
+import Marker from "react-native-image-marker"
 import {
   GiphyUi
 } from 'react-native-giphy-ui'
@@ -43,18 +40,17 @@ import SwitchWithIcons from "react-native-switch-with-icons"
 
 GiphyUi.configure('Qo2dUHUdpctbPSuRhDIile6Gr6cOn96H')
 
-var twoMatrix = [[1, 1], [2]]
-var threeMatrix = [[3], [2, 1], [1,2]]
-var fourMatrix = [[2, 2], [3, 1], [2, 1, 1], [4]]
-var colors = [
+const twoMatrix = [[1, 1], [2]]
+const threeMatrix = [[3], [2, 1], [1,2]]
+const fourMatrix = [[2, 2], [3, 1], [2, 1, 1], [4]]
+const colors = [
   {value: 'black'}, {value: 'brown'}, {value: '#FF0000'}, {value: '#FE7E00'}, {value: 'yellow'},
   {value: '#01FF01'}, {value: '#00EFFE'}, {value: '#0000FE'}, {value: '#FF00FE'}, {value: 'white'}, {value: 'grey'}
 ]
-var brushSizes = [40, 30, 25, 20, 15, 12, 10, 8]
+const brushSizes = [40, 30, 25, 20, 15, 12, 10, 8]
 
 export default class Create extends React.Component{
   static navigationOptions = ({navigation}) => {
-    const { params = {} } = navigation.state
     return {
       header: null
     };
@@ -65,6 +61,8 @@ export default class Create extends React.Component{
     this.state = {
       user: '',
       photos: [],
+      redditTemplates: [],
+      templates: [],
       images: [],
       contests: [],
       joinedContest: false,
@@ -77,6 +75,7 @@ export default class Create extends React.Component{
       showStickerTools: false,
       showImageTools: false,
       finalize: false,
+      captionScreen: false,
       texts: [],
       editingTextID: 0,
       strokeWidth: 15,
@@ -106,6 +105,8 @@ export default class Create extends React.Component{
     BackHandler.addEventListener('hardwareBackPress', this.handleBack)
     this.getPhotos()
     this.fetchUser()
+    this.getRedditTemplates()
+    this.getTemplates()
   }
   
   componentWillUnmount() {
@@ -174,46 +175,24 @@ export default class Create extends React.Component{
     })
   }
   getTemplates(){
-    fetch('https://lishup.com/app/memeTemplates.php', {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      }
-    })
-    .then((response) => response.json())
-    .then((responseJson) => {
-      this.setState({photos: responseJson, images: [responseJson[0].url], numImages: 1, refreshingPhotos: false, showPhotosFrom: 'templates'})
-    })
+    firestore()
+     .collection('assets')
+     .doc('templates')
+     .onSnapshot(querySnapshot => {
+       this.setState({templates: querySnapshot._data.list})
+     })
   }
   renderGallery = ({item, idx}) => (
-
     <View>
-      <TouchableOpacity onPress={() => {
-         if(this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri)){
-          var i = 0;
-          while (i < this.state.images.length) {
-            if (this.state.images[i] === (this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri)) {
-              let images = this.state.images
-              images.splice(i, 1)
-              this.setState({images: images,  numImages: this.state.numImages - 1})
-            } else {
-              ++i;
-            }
-          }
-         } else{
-          this.setState({images: this.state.showPhotosFrom == 'templates' ?
-          [item.url] :  [...this.state.images, item.node.image.uri], numImages: this.state.showPhotosFrom == 'templates' ? 1 : this.state.numImages + 1})
-         }
-      }}
+      <TouchableOpacity onPress={() => this.selectPhotos(item)}
        style={{backgroundColor: 'black', margin: 5/3, }}>
     <Image key={idx} style={{
       width: (Dimensions.get('window').width / 3) - 1.5,
       height: Dimensions.get('window').width / 3,
       resizeMode: 'cover',
-      opacity: this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri) ? 0.5 : 1
+      opacity: this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url :  item.node.image.uri) ? 0.5 : 1
     }}
-    source={{ uri: this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri}}  />
+    source={{ uri: this.state.showPhotosFrom == 'templates' ? item.url :  item.node.image.uri}}  />
     </TouchableOpacity>
     </View>
   )
@@ -232,6 +211,29 @@ export default class Create extends React.Component{
     </TouchableOpacity>
     </View>
   )
+  selectPhotos(item){
+    if(this.state.showPhotosFrom != 'templates' && item.node.image.uri.split('.').pop() == 'gif'){
+      if(this.state.images.includes(item.node.image.uri)){
+        this.setState({images: [], numImages: 0})
+      }else this.setState({images: [item.node.image.uri], numImages: 1})
+     }else{
+      if(this.state.images.includes(this.state.showPhotosFrom == 'templates' ? item.url : item.node.image.uri)){
+        var i = 0;
+        while (i < this.state.images.length) {
+          if (this.state.images[i] === (this.state.showPhotosFrom == 'templates' ? item.url  : item.node.image.uri)) {
+            let images = this.state.images
+            images.splice(i, 1)
+            this.setState({images: images,  numImages: this.state.numImages - 1})
+          } else {
+            ++i;
+          }
+        }
+       } else{
+        this.setState({images: this.state.showPhotosFrom == 'templates' ?
+        [item.url]  : [...this.state.images, item.node.image.uri], numImages: this.state.showPhotosFrom == 'templates' ? 1 : this.state.numImages + 1})
+       }
+     }
+  }
   fetchContests(){
       fetch('https://lishup.com/app/fetchContests.php', {
         method: 'POST',
@@ -471,23 +473,28 @@ export default class Create extends React.Component{
     const mix = params ? params.mixContent : null
 
     ToastAndroid.show('Baking your Ugly Meme', ToastAndroid.SHORT)
-    let upload = RNFetchBlob.fetch('POST', 'https://lishup.com/app/upload.php', {
-            'Content-Type' : 'multipart/form-data',
-            "Accept":"multipart/form-data",
-          }, [
-            { name : 'image', filename : 'image.jpg', data: RNFetchBlob.wrap(this.state.meme)},
-          ])
-        setTimeout(()=>{
-          upload.uploadProgress({ interval:1 }, (written, total) => {
-            let uploaded = (written / total) * 100
-            ToastAndroid.show(uploaded.toFixed(1) + '% Uploaded', ToastAndroid.SHORT)
-      })
-        }, 0)
-        
-        upload.then((resp) => {
-          var check = resp.text()
-          if(check != 'error'){
-            this.setState({meme: resp.text()})
+    const formData = new FormData()
+    formData.append('image', {
+       uri : this.state.meme,
+       type: 'image/jpeg',
+       name: this.state.meme.substring(this.state.meme.lastIndexOf('/') + 1)
+    })
+     const config = {
+       method: 'POST',
+       headers: {
+           'Accept': 'application/json',
+           'Content-Type': 'multipart/form-data',
+        },
+      body: formData,
+     }
+     fetch('https://storage.lishup.com/upload_files', config)
+      .then(response => response.json())
+      .then(responseJson => {
+          if(responseJson.message == "successful"){
+            let filename = this.state.meme.substring(this.state.meme.lastIndexOf('/') + 1)
+            const name = filename.split('.').slice(0, -1).join('.')
+            const url = 'https://storage.lishup.com/files/' + name + '.webp'
+            this.setState({meme: url})
             fetch('https://lishup.com/app/newpost.php', {
                 method: 'POST',
                 headers: {
@@ -495,7 +502,7 @@ export default class Create extends React.Component{
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                  user: this.state.user, img: resp.text(), 
+                  user: this.state.user, img: url, 
                   text: this.state.caption, community: 46, 
                   cost: this.state.contestCost,
                   remixed: this.state.remixUri,
@@ -574,9 +581,31 @@ export default class Create extends React.Component{
       //console.log(responseJson)
     })
   }
-  continueWithGIF(){
-    ImagePicker.launchImageLibrary({mediaType: 'photo'}, res => {
-      console.log(res)
+  searchTemplates(txt){
+    if(txt.length > 2){
+      const results = this.state.templates.filter(item => {
+        return item.keyword.toLowerCase().match(txt.toLowerCase())
+      })
+      console.log(results, txt)
+      this.setState({templates: results})
+    }else if(txt.length == 0){
+      this.getTemplates()
+    }
+  }
+  getRedditTemplates(){
+    fetch('http://34.133.61.41/', {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      }
+    })
+    .then((response) => response.json())
+    .then((responseJson) => {
+      responseJson.shift()
+      responseJson.shift()
+      console.log(responseJson[0].preview.images[0].source.url)
+      this.setState({redditTemplates: responseJson})
     })
   }
   render(){
@@ -586,7 +615,10 @@ export default class Create extends React.Component{
            <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 20, marginBottom: 50,
               fontFamily: 'impact'}}>Choose Layout</NativeText>
            <TouchableOpacity style={{ top: 20, position: 'absolute', right: 20}} onPress={() =>{
-               if(this.state.numImages > 0 && this.state.numImages < 5){
+             if(this.state.images[0].substring(this.state.images[0].length - 3, this.state.images[0].length) == 'gif'){
+               this.setState({finalize: true, selectTemplate: false, meme: this.state.images[0], cachedMeme: this.state.images[0]})
+             }else{
+              if(this.state.numImages > 0 && this.state.numImages < 5){
                 this.setState({selectTemplate: false, isResizing: false, showTextTools: false, showStickerTools: false, showImageTools: false,
                   matrix: this.state.numImages > 1 ? this.state.numImages == 2 ? twoMatrix[this._carousel.currentIndex] : this.state.numImages == 3 ?
                   threeMatrix[this._carousel.currentIndex] : fourMatrix[this._carousel.currentIndex] : [] })
@@ -594,6 +626,7 @@ export default class Create extends React.Component{
                }else{
                  ToastAndroid.show('Please choose min 1 and max 4 Photos', ToastAndroid.SHORT)
                }
+             }
              }}> 
              <Icon name="arrow-forward-circle" size={40} color="#00BBFF"  
              /></TouchableOpacity>
@@ -641,27 +674,70 @@ export default class Create extends React.Component{
            </View> : null}    
             </View>
               
-          <View style={{alignSelf: 'center', width: '100%', marginBottom: 15, justifyContent: 'space-evenly',
-             alignItems: 'center', flexDirection: 'row'}}>
+          <View style={{alignSelf: 'center', width: '100%', marginBottom: 15}} >
+            <ScrollView horizontal>
             <TouchableOpacity onPress={() => this.getPhotos()}>
             <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'device' ?
-              1 : 0.5}} >Camera Roll</NativeText>
+              1 : 0.5, marginHorizontal: 10, fontSize: 15}} >Camera Roll</NativeText>
               </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.getTemplates()}> 
+            <TouchableOpacity onPress={() => this.setState({showPhotosFrom: 'templates'})}> 
             <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'templates' ?
-              1 : 0.5}}>Meme Templates</NativeText></TouchableOpacity>
-           <TouchableOpacity onPress={() => this.setState({showPhotosFrom: 'gifs'})}> 
-            <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'gifs' ?
-              1 : 0.5}}>GIF Meme</NativeText></TouchableOpacity>
+              1 : 0.5, marginHorizontal: 10, fontSize: 15}}>Meme Templates</NativeText></TouchableOpacity>
+            <TouchableOpacity onPress={() => this.setState({showPhotosFrom: 'redditTemp'})}> 
+           <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'redditTemp' ?
+              1 : 0.5, marginHorizontal: 10, fontSize: 15}}>Reddit Templates</NativeText></TouchableOpacity>
+           <TouchableOpacity onPress={() => this.setState({showPhotosFrom: 'fromLink'})}> 
+           <NativeText style={{color: 'white', opacity: this.state.showPhotosFrom == 'fromLink' ?
+              1 : 0.5, marginHorizontal: 10, fontSize: 15}}>Add Template</NativeText></TouchableOpacity>
+            </ScrollView>
           </View> 
           <View style={{height: Dimensions.get('window').height / 2.5}}>
-          {this.state.showPhotosFrom == 'gifs' ? 
-            <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 45, 
-            borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
-            onPress={() => this.continueWithGIF()}>
-              <NativeText style={{color: 'white', fontSize: 20}}>Choose GIF</NativeText></TouchableOpacity>
-          : <FlatList 
-            data={this.state.photos}
+          {this.state.showPhotosFrom == 'redditTemp' ?
+          <FlatList
+            data={this.state.redditTemplates}
+            renderItem={({item, index}) => (
+              <TouchableOpacity onPress={() => {
+                if(this.state.images.includes(item.preview ? item.preview.images[0].source.url : '')){
+                 var i = 0;
+                 while (i < this.state.images.length) {
+                   if (this.state.images[i] === (item.preview ? item.preview.images[0].source.url : '')) {
+                     let images = this.state.images
+                     images.splice(i, 1)
+                     this.setState({images: images,  numImages: this.state.numImages - 1})
+                   } else {
+                     ++i;
+                   }
+                 }
+                } else{
+                 this.setState({images: [item.preview ? item.preview.images[0].source.url : ''], numImages: 1})
+                }
+             }}
+              style={{backgroundColor: 'black', margin: 5/3, }}>
+              <Image 
+              style={{
+                width: (Dimensions.get('window').width / 3) - 1.5,
+                height: Dimensions.get('window').width / 3,
+                resizeMode: 'cover',
+                opacity: this.state.images.includes(item.preview ? item.preview.images[0].source.url : '') ? 0.5 : 1
+              }}
+              source={{uri: item.preview ? item.preview.images[0].source.url : ''}}/>
+              </TouchableOpacity>
+            )}
+            numColumns={3}
+             />
+          : this.state.showPhotosFrom == 'fromLink' ? 
+          <View>
+            <TextInput 
+            style={{backgroundColor: 'white', padding: 10, marginVertical: 10}} placeholder="Paste Link to use Template"
+            onChangeText={url => this.setState({fromURL: url})}
+            onEndEditing={() => this.setState({images: [this.state.fromURL], numImages: 1, selectTemplate: false})}
+            keyboardType="url" />
+          {this.state.fromURL ? <Icon name="arrow-forward-circle" size={40} color="#00BBFF"
+            style={{ position: 'absolute', right: 10, }} 
+            onPress={() => this.setState({images: [this.state.fromURL], numImages: 1, selectTemplate: false})} /> : null}
+          </View>
+          :<FlatList 
+            data={this.state.showPhotosFrom == 'templates' ? this.state.templates : this.state.photos}
             renderItem={this.renderGallery}
             keyExtractor={(item, idx) => idx}
             numColumns={3}
@@ -672,6 +748,9 @@ export default class Create extends React.Component{
                 this.setState({refreshingPhotos: true})
               }}
               refreshing={this.state.refreshingPhotos} />}
+             ListHeaderComponent={this.state.showPhotosFrom == 'templates' ? <>
+              <TextInput 
+              style={{backgroundColor: 'white', padding: 10}} placeholder="Search Templates" onChangeText={val => this.searchTemplates(val)} /></> : null}
           />}</View>
         </View>
       )
@@ -714,7 +793,7 @@ export default class Create extends React.Component{
         </View>
         <ViewShot ref="viewShot" options={{ format: "jpg", quality: 0.9 }}>
         <View style={{ height: (Dimensions.get('window').height * 60) / 100, width: '100%', flexDirection: 'row', position: 'absolute',
-         marginTop: this.state.textAtTop && this.state.textArea ? 70 : 0, backgroundColor: 'transparent' }}>
+         marginTop: this.state.textAtTop && this.state.textArea ? 70 : 0, backgroundColor: 'transparent', alignSelf: 'flex-start' }}>
          <SketchCanvas
             style={{ flex: 1, backgroundColor: 'transparent', zIndex: this.state.isResizing ? -10 : -2,}}
             strokeColor={this.state.strokeColor}
@@ -969,7 +1048,7 @@ export default class Create extends React.Component{
     </View> : null}
     </View>
     )
-    }else if(this.state.finalize && !this.state.Posted){
+    }else if(this.state.finalize && !this.state.Posted && !this.state.captionScreen){
       return(
         <View style={{flex: 1, backgroundColor: 'black'}}> 
          <TouchableOpacity style={{marginTop: 30, marginLeft: 20, position: 'absolute', zIndex: 10}} 
@@ -978,30 +1057,56 @@ export default class Create extends React.Component{
            <Icon name="arrow-back-circle" color="#00BBFF" size={50}/>
           </TouchableOpacity>
           <NativeText style={{color: 'white', top: 30, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Share</NativeText>
-          <TextInput style={{backgroundColor:'#747474', color: '#fff', width: '100%',  padding: 15, marginBottom: 0,
-          fontSize: 15, 
-          textAlign: 'center', margin: 0}}
-           placeholder="Add a Tagline" placeholderTextColor="white" maxLength={50}
-           onChangeText={val => this.setState({caption: val})} value={this.state.caption} />
+
           <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
             marginTop: 0}} resizeMode="contain" />
             <ScrollView>
-         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 45, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
-          onPress={() => this.post()}>
-            <NativeText style={{color: 'white', fontSize: 30}}>Post</NativeText></TouchableOpacity>
+         <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 45, borderRadius: 15, marginTop: 30, alignSelf: 'center'}} 
+          onPress={() => this.setState({captionScreen: true})}>
+            <NativeText style={{color: 'white', fontSize: 30}}>Next</NativeText></TouchableOpacity>
             <TouchableOpacity style={{backgroundColor: '#5200FF', padding: 10, 
      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 25, borderRadius: 15, marginTop: 10, alignSelf: 'center'}} 
           onPress={() => {
-                CameraRoll.save(this.state.cachedMeme)
-                ToastAndroid.show('Meme Saved to Phone', ToastAndroid.SHORT)
+            Marker.markImage({
+              src: this.state.cachedMeme, 
+              markerSrc: 'https://cdn.discordapp.com/attachments/802689859822420028/859712706268233784/watermark_1.png', 
+              position: 'bottomRight', 
+              scale: 1, 
+              markerScale: 0.5, 
+              quality: 100
+           }).then((path) => {
+              CameraRoll.save('file://' + path)
+              ToastAndroid.show('Meme Saved to Phone', ToastAndroid.SHORT)  
+           })
         }}>   
           <Icon name="ios-download" size={25} color="white" />            
-     <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Save to Phone</NativeText></TouchableOpacity>  
+          <NativeText style={{color: 'white', fontSize: 25, marginLeft: 5}}>Save to Phone</NativeText></TouchableOpacity>  
          
           </ScrollView>
         </View>   
       )  
-    }else if(this.state.Posted && !this.state.finalize){
+    } if(this.state.finalize && !this.state.Posted && this.state.captionScreen){
+      return (
+        <View style={{flex: 1, backgroundColor: 'black'}}> 
+            <TouchableOpacity style={{marginTop: 30, marginLeft: 20, position: 'absolute', zIndex: 10}} 
+            onPress={() => this.setState({captionScreen: false})}>
+              <Icon name="arrow-back-circle" color="#00BBFF" size={50}/>
+            </TouchableOpacity>
+            <NativeText style={{color: 'white', top: 30, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>
+              Add Caption</NativeText>
+            <NativeImage source={{uri: this.state.meme}} style={{height: '50%', width: '99%', alignSelf: 'center',
+               marginTop: 0}} resizeMode="contain" />
+            <TextInput style={{backgroundColor:'#f2f2f2', width: '90%',  padding: 15, marginBottom: 0,
+            fontSize: 15, 
+            textAlign: 'center', margin: 0, fontSize: 25, marginTop: 50, borderRadius: 20, alignSelf: 'center'}}
+            placeholder="Add a Caption" maxLength={50}
+            onChangeText={val => this.setState({caption: val})} value={this.state.caption} />
+            <TouchableOpacity style={{backgroundColor: '#00BBFF', padding: 10, paddingHorizontal: 45, borderRadius: 15, marginTop: 30, alignSelf: 'center'}} 
+              onPress={() => this.post()}>
+            <NativeText style={{color: 'white', fontSize: 30}}>Post</NativeText></TouchableOpacity>
+          </View>
+      )
+    } else if(this.state.Posted && !this.state.finalize){
       return(
       <View style={{flex: 1, backgroundColor: 'black'}}> 
       <NativeText style={{color: 'white', top: 20, textAlign: 'center', fontSize: 25, fontFamily: 'impact', marginBottom: 50}}>Meme Posted</NativeText>
