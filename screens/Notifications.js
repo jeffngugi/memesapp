@@ -71,6 +71,8 @@ export default class Notifications extends React.Component{
           return <Svg width="30" height="25" viewBox="0 0 20 14" fill="none" xmlns="http://www.w3.org/2000/svg">
           <Path d="M19.1358 4.50423L9.87037 12.9787L0.604947 4.50423L3.37217 0.459825H16.3686L19.1358 4.50423Z" fill="#ED0063" stroke="#ED0063" stroke-width="0.91965"/>
           </Svg>
+        }else if(txt.substring(txt.length - 23, txt.length) == " just Remixed your Meme"){
+          return <Icon name="shuffle" color="#24292e" size={30} />
         }else{
           return <Icon name="eye" color='#4DA6FF' size={25} />
         }
@@ -86,6 +88,8 @@ export default class Notifications extends React.Component{
         this.props.navigation.navigate('Profile', {user: txt.substring(0, txt.length - 23), dark: this.state.dark })
       }else if(txt.substring(txt.length - 16, txt.length) == "Loved your Post!"){
         this.props.navigation.navigate('ViewPost', {id: extra.substring(6, extra.length), dark: this.state.dark })
+      }else if(txt.substring(txt.length - 23, txt.length) == " just Remixed your Meme"){
+        this.props.navigation.navigate('ViewPost', {id: extra, dark: this.state.dark })
       }
     }
     renderItem = ({item}) => (

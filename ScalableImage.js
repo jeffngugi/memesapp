@@ -5,8 +5,9 @@ import {TouchableWithoutFeedback } from "react-native-gesture-handler"
 import FastImage from 'react-native-fast-image'
 
     export default class ScaledImage extends Component {
-        state = {}
-
+        state ={
+            
+        }
         componentDidMount() {
             const { uri, width, height, source } = this.props;
             this.setState({ source: source, width: width || height, height: height || width });
@@ -19,36 +20,36 @@ import FastImage from 'react-native-fast-image'
 
         render() {
             return (
-               <TouchableWithoutFeedback onPress={this.props.onPress} style={{elevation: 5}}>
-                <FastImage
-                    source={this.state.source}
-                    onLoad={(value) => {
-                        const { height, width } = value.nativeEvent;
-                        if (this.props.width && !this.props.height) {
-                            this.setState({
-                                width: this.props.width,
-                                height: height * (this.props.width / width)
-                            });
-                        } else if (!this.props.width && this.props.height) {
-                            this.setState({
-                                width: width * (this.props.height / height),
-                                height: this.props.height
-                            });
-                        } else {
-                            this.setState({ width: width, height: height });
-                        }
-
-                    }}
-                    style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,
-                        alignSelf: 'center', marginHorizontal: 10 }, this.props.style]}
-                    onLongPress={this.props.onLongPress}
-                    resizeMode="contain"
-                /></TouchableWithoutFeedback>
-                
-            );
+            <TouchableWithoutFeedback onPress={this.props.onPress} style={{elevation: 5}}>
+                     <FastImage
+                         source={this.state.source}
+                         onLoad={(value) => {
+                             const { height, width } = value.nativeEvent;
+                             if (this.props.width && !this.props.height) {
+                                 this.setState({
+                                     width: this.props.width,
+                                     height: height * (this.props.width / width)
+                                 });
+                             } else if (!this.props.width && this.props.height) {
+                                 this.setState({
+                                     width: width * (this.props.height / height),
+                                     height: this.props.height
+                                 });
+                             } else {
+                                 this.setState({ width: width, height: height });
+                             }
+                             this.setState({loading: false})
+                         }}
+                         style={[{ height: this.state.height, width: (Dimensions.get('window').width * 90) / 100,
+                             alignSelf: 'center', marginHorizontal: 10 }, this.props.style]}
+                         onLongPress={this.props.onLongPress}
+                         resizeMode="contain"
+                         onLoadStart={() => this.setState({loading: true})}
+                         onLoadEnd={() => this.setState({loading: false})}
+                     /></TouchableWithoutFeedback>
+                 )
         }
     }
-
     ScaledImage.propTypes = {
         uri: PropTypes.string,
         require: PropTypes.string,

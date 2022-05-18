@@ -46,6 +46,7 @@ export default class Search extends React.Component{
       .then((responseJson) => {
         this.setState({data: responseJson, loading: false})
         this.state.data.map(item => this.fetchContestDetails(item.id))
+        
       })
       .catch((err) => {
         console.log(err)
@@ -73,7 +74,6 @@ export default class Search extends React.Component{
               this.setState({data: copy})
             }
           }
-          console.log(responseJson[0])
           Promise.all(
             responseJson[0].posts.map(({ image }) => this.fetchImage(image))
           ).then((imageUrls) => {this.setState({ imageUrls })
